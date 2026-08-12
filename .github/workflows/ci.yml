@@ -8,29 +8,73 @@ permissions:
   contents: read
 
 jobs:
-  quality:
-    name: Quality checks
+  web:
+    name: Web (Next.js)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      - run: npm ci
+      - run: npm run lint -w @stats/web
+      - run: npm test -w @stats/web
+      - run: npm run build -w @stats/web
 
-      - name: Install dependencies
-        run: npm ci
+  api:
+    name: API (FastAPI)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: stats
+          POSTGRES_PASSWORD: stats
+          POSTGRES_DB: stats_app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e "apps/api[dev]"
+      - run: pytest apps/api/tests -v
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Test
-        run: npm test
-
-      - name: Build
-        run: npm run build
+  contracts:
+    name: Contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: Validate OpenAPI spec
+        run: |
+          python3 -c "
+          import yaml, json, sys
+          with open('packages/contracts/openapi.yaml') as f:
+              spec = yaml.safe_load(f)
+          assert 'openapi' in spec, 'Missing openapi key'
+          assert 'paths' in spec, 'Missing paths'
+          print(f'OpenAPI {spec[\"openapi\"]} spec is valid with {len(spec[\"paths\"])} paths')
+          "

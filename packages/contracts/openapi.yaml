@@ -1,0 +1,98 @@
+openapi: "3.1.0"
+info:
+  title: Stats App API
+  version: "0.1.0"
+  description: API versionada para análisis estadístico de fútbol
+
+servers:
+  - url: /api/v1
+    description: API v1
+
+paths:
+  /:
+    get:
+      operationId: getRoot
+      summary: Información del servicio
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceInfo"
+
+  /health/live:
+    get:
+      operationId: getLiveness
+      summary: Liveness probe
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /health/ready:
+    get:
+      operationId: getReadiness
+      summary: Readiness probe
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessStatus"
+
+components:
+  schemas:
+    ServiceInfo:
+      type: object
+      required: [service, version, env]
+      properties:
+        service:
+          type: string
+          example: stats-api
+        version:
+          type: string
+          example: "0.1.0"
+        env:
+          type: string
+          example: development
+
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, unavailable]
+
+    ReadinessStatus:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, unavailable]
+        checks:
+          type: object
+          properties:
+            postgres:
+              type: string
+            redis:
+              type: string
+
+    ErrorResponse:
+      type: object
+      required: [code, message, correlation_id]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+        correlation_id:
+          type: string

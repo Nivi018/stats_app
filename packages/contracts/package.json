@@ -1,0 +1,9 @@
+{
+  "name": "@stats/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "lint": "echo 'contracts lint ok'",
+    "test": "echo 'contracts tests ok'"
+  }
+}

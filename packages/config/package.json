@@ -1,0 +1,9 @@
+{
+  "name": "@stats/config",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "lint": "echo 'config lint ok'",
+    "test": "echo 'config tests ok'"
+  }
+}

@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Stats App
 
-## Getting Started
+Monorepo para análisis estadístico de fútbol — Liga MX, Over/Under 2.5 prepartido, datos demo reproducibles.
 
-First, run the development server:
+## Estructura
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+apps/
+  web/       # Next.js — UI, rutas y cliente API
+  api/       # FastAPI — dominio, persistencia y endpoints
+  worker/    # Consumidor de cola — ingesta y cálculo asíncrono
+packages/
+  contracts/ # Especificación OpenAPI y tipos compartidos
+  config/    # Configuración de tooling
+infra/       # Docker Compose y configuración de despliegue
+docs/adr/    # Decisiones arquitectónicas
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Requisitos
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Node.js 22+
+- Python 3.12+
+- Docker (para PostgreSQL y Redis locales)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Arranque rápido
 
-## Learn More
+```bash
+# Instalar dependencias
+npm install
 
-To learn more about Next.js, take a look at the following resources:
+# Levantar PostgreSQL y Redis
+docker compose -f infra/docker-compose.yml up -d
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Python venvs (primera vez)
+python -m venv apps/api/.venv
+apps/api/.venv/Scripts/pip install -e "apps/api[dev]"
+python -m venv apps/worker/.venv
+apps/worker/.venv/Scripts/pip install -e "apps/worker[dev]"
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Comandos
 
-## Deploy on Vercel
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Inicia todos los procesos en modo desarrollo |
+| `npm run build` | Compila todas las aplicaciones |
+| `npm run lint` | Ejecuta lint en todas las unidades |
+| `npm test` | Ejecuta todas las pruebas |
+| `npm test -w @stats/web` | Solo pruebas del frontend |
+| `npm run build -w @stats/web` | Solo build del frontend |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Por unidad
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# Web (Next.js)
+npm run dev -w @stats/web
+npm test -w @stats/web
+npm run lint -w @stats/web
+
+# API (FastAPI)
+apps/api/.venv/Scripts/uvicorn app.main:app --reload --port 8000
+apps/api/.venv/Scripts/python -m pytest apps/api/tests -v
+
+# Worker
+apps/worker/.venv/Scripts/python -m app.main
+```
+
+## Variables de entorno
+
+Copiar `.env.example` a `.env` y ajustar según entorno. Las variables usan el prefijo `STATS_`.
+
+| Variable | Default | Descripción |
+|----------|---------|-------------|
+| `STATS_POSTGRES_HOST` | localhost | Host de PostgreSQL |
+| `STATS_POSTGRES_PORT` | 5432 | Puerto de PostgreSQL |
+| `STATS_POSTGRES_USER` | stats | Usuario |
+| `STATS_POSTGRES_PASSWORD` | stats | Contraseña |
+| `STATS_POSTGRES_DB` | stats_app | Base de datos |
+| `STATS_REDIS_HOST` | localhost | Host de Redis |
+| `STATS_REDIS_PORT` | 6379 | Puerto de Redis |
+
+## CI/CD
+
+El pipeline en `.github/workflows/ci.yml` valida:
+
+- **Web:** lint, test y build de Next.js
+- **API:** pytest contra FastAPI con servicios PostgreSQL y Redis
+- **Contracts:** validación del esquema OpenAPI
+
+## Troubleshooting
+
+**Error: `python` no encontrado**
+Instalar Python 3.12 desde https://python.org o `winget install Python.Python.3.12`.
+
+**Error: `eslint.config.mjs` no encontrado al ejecutar lint**
+Ejecutar eslint desde el directorio de la app: `npx eslint src` en `apps/web`.
+
+**PostgreSQL o Redis no responden**
+Verificar que los contenedores están activos: `docker compose -f infra/docker-compose.yml ps`.
+
+**python.exe del Microsoft Store**
+Desactivar los alias de ejecución en Configuración > Aplicaciones > Configuración avanzada > Alias de ejecución de aplicaciones, o usar la ruta completa a Python 3.12.
