@@ -2,7 +2,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
 
+from app.api.routes.matchday import router as matchday_router
 from app.core.config import settings
+from app.core.errors import setup_error_handlers
 from app.core.health import router as health_router
 
 
@@ -17,8 +19,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+setup_error_handlers(app)
+
 v1_router = APIRouter(prefix="/api/v1")
 v1_router.include_router(health_router, tags=["health"])
+v1_router.include_router(matchday_router, tags=["matchday"])
 app.include_router(v1_router)
 
 
