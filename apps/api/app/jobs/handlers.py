@@ -7,6 +7,7 @@
 
 from collections.abc import Callable
 from datetime import datetime, timezone
+import json
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -59,33 +60,33 @@ def build_compute_prediction_handler(session_factory):
             baseline = PoissonBaseline()
             over, under = baseline.predict(lambda_home, lambda_away)
 
-            existing = (
-                await session.execute(
-                    select(Prediction).where(
-                        Prediction.match_id == match.id,
-                        Prediction.model_version_id == model_version.id,
-                        Prediction.inputs_hash == over.inputs_hash,
+            now = datetime.now(timezone.utc)
+            inputs_json = json.dumps(
+                {
+                    "lambda_home": lambda_home,
+                    "lambda_away": lambda_away,
+                    "model_version": baseline.MODEL_VERSION,
+                    "feature_set_version": model_version.feature_set_version,
+                    "dataset": "demo-2026-apertura",
+                },
+                sort_keys=True,
+            )
+            for selection, prediction in (("over", over), ("under", under)):
+                session.add(
+                    Prediction(
+                        match_id=match.id,
+                        model_version_id=model_version.id,
+                        market=baseline.MARKET,
+                        selection=selection,
+                        probability=prediction.probability,
+                        fair_odds=prediction.fair_odds,
+                        data_quality="medium",
+                        risk_level="medium",
+                        inputs=inputs_json,
+                        inputs_hash=prediction.inputs_hash,
+                        prediction_timestamp=now,
                     )
                 )
-            ).scalar_one_or_none()
-
-            if existing is None:
-                now = datetime.now(timezone.utc)
-                for selection, prediction in (("over", over), ("under", under)):
-                    session.add(
-                        Prediction(
-                            match_id=match.id,
-                            model_version_id=model_version.id,
-                            market=baseline.MARKET,
-                            selection=selection,
-                            probability=prediction.probability,
-                            fair_odds=prediction.fair_odds,
-                            data_quality="medium",
-                            risk_level="medium",
-                            inputs_hash=prediction.inputs_hash,
-                            prediction_timestamp=now,
-                        )
-                    )
             await session.commit()
 
     return compute_prediction

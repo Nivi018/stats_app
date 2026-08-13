@@ -115,6 +115,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /predictions/{prediction_id}:
+    get:
+      operationId: getPrediction
+      summary: Recupera una predicción persistida por ID
+      parameters:
+        - name: prediction_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prediction"
+        "404":
+          description: Predicción no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     ServiceInfo:
@@ -263,6 +288,52 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Odds"
+
+    Prediction:
+      type: object
+      required: [id, match_id, model_version_id, market, selection, probability, fair_odds, data_quality, risk_level, inputs_hash, prediction_timestamp]
+      properties:
+        id:
+          type: string
+          format: uuid
+        match_id:
+          type: string
+          format: uuid
+        model_version_id:
+          type: string
+          format: uuid
+        market:
+          type: string
+        selection:
+          type: string
+        probability:
+          type: number
+        fair_odds:
+          type: number
+        implied_probability:
+          type: number
+          nullable: true
+        no_vig_probability:
+          type: number
+          nullable: true
+        edge_pp:
+          type: number
+          nullable: true
+        ev:
+          type: number
+          nullable: true
+        data_quality:
+          type: string
+        risk_level:
+          type: string
+        inputs:
+          type: string
+          nullable: true
+        inputs_hash:
+          type: string
+        prediction_timestamp:
+          type: string
+          format: date-time
 
     ErrorResponse:
       type: object

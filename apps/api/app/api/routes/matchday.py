@@ -4,14 +4,17 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.matchday import MatchdayService
 from app.core.errors import error_response
+from app.models import Prediction
 from app.schemas.matchday import (
     MatchDetailDto,
     MatchdayDto,
     OddsDto,
+    PredictionDto,
     TeamMatchStatsDto,
 )
 
@@ -108,3 +111,15 @@ async def get_match_odds(
         return error_response(404, "not_found", f"Partido no encontrado: {match_id}", request)
     odds = await service.get_match_odds(match_id)
     return [_to_odds_dto(o) for o in odds]
+
+
+@router.get("/predictions/{prediction_id}", response_model=PredictionDto)
+async def get_prediction(
+    prediction_id: str,
+    request: Request,
+    service: MatchdayService = Depends(get_matchday_service),
+):
+    prediction = await service.get_prediction(prediction_id)
+    if prediction is None:
+        return error_response(404, "not_found", f"Predicción no encontrada: {prediction_id}", request)
+    return PredictionDto.model_validate(prediction)

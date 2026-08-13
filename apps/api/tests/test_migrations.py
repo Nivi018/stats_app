@@ -21,7 +21,7 @@ ADMIN_DSN = "postgresql://stats:stats@localhost:5433/postgres"
 MIGRATE_DB = "stats_app_migtest"
 MIGRATE_URL = f"postgresql+asyncpg://stats:stats@localhost:5433/{MIGRATE_DB}"
 ALEMBIC_INI = "alembic.ini"
-HEAD_REVISION = "bef5a7cde964"
+HEAD_REVISION = "06de9ee1fdc3"
 
 _TABLES = {
     "competitions", "seasons", "teams", "matches", "team_match_stats",

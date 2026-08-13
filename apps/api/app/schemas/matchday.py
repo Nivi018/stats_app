@@ -5,6 +5,7 @@ canónico en `packages/contracts/openapi.yaml`.
 """
 
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
@@ -58,6 +59,27 @@ class MatchDetailDto(BaseModel):
     match: MatchDto
     stats: list[TeamMatchStatsDto]
     odds: list[OddsDto]
+
+
+class PredictionDto(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    match_id: UUID
+    model_version_id: UUID
+    market: str
+    selection: str
+    probability: float
+    fair_odds: float
+    implied_probability: float | None = None
+    no_vig_probability: float | None = None
+    edge_pp: float | None = None
+    ev: float | None = None
+    data_quality: str
+    risk_level: str
+    inputs: str | None = None
+    inputs_hash: str
+    prediction_timestamp: datetime
 
 
 class ErrorDto(BaseModel):

@@ -3,11 +3,14 @@
 La API depende de estos servicios; nunca accede a PostgreSQL directamente.
 """
 
+import uuid
 from collections.abc import Callable
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.providers import DomainMatch, DomainOddsSnapshot, DomainTeamMatchStats
+from app.models import Prediction
 from app.providers.demo import DemoOddsProvider, DemoSportsDataProvider
 
 
@@ -18,6 +21,7 @@ class MatchdayService:
         sports: DemoSportsDataProvider | None = None,
         odds: DemoOddsProvider | None = None,
     ) -> None:
+        self._session_factory = session_factory
         self._sports = sports or DemoSportsDataProvider(session_factory)
         self._odds = odds or DemoOddsProvider(session_factory)
 
@@ -32,3 +36,14 @@ class MatchdayService:
 
     async def get_match_odds(self, match_id: str) -> list[DomainOddsSnapshot]:
         return await self._odds.get_odds_snapshots(match_id)
+
+    async def get_prediction(self, prediction_id: str) -> Prediction | None:
+        if self._session_factory is None:
+            return None
+        try:
+            prediction_uuid = uuid.UUID(prediction_id)
+        except ValueError:
+            return None
+        async with self._session_factory() as session:
+            result = await session.execute(select(Prediction).where(Prediction.id == prediction_uuid))
+            return result.scalar_one_or_none()
