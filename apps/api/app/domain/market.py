@@ -1,9 +1,12 @@
-"""Funciones puras del mercado: probabilidad implícita, de-vig y CLV.
+"""Funciones puras del mercado: de-vig y CLV.
 
 Independientes de FastAPI y ORM; compartidas por API y worker.
+Las fórmulas base (cuota justa, implícita, edge, EV) viven en `app.domain.odds`.
 """
 
 import math
+
+from app.domain.odds import InvalidOddsError, implied_probability, validate_odds
 
 MARKET_OVER_UNDER = "over_under_2_5"
 LINE_2_5 = 2.5
@@ -21,22 +24,8 @@ MAX_SNAPSHOT_AGE = 30 * 60  # segundos
 MAX_PAIR_GAP = 60  # segundos
 
 
-class InvalidOddsError(ValueError):
-    """Cuota fuera de contrato (<=1, NaN, infinito)."""
-
-
 class InvalidMarketError(ValueError):
     """Mercado, línea o selección fuera de contrato."""
-
-
-def validate_odds(decimal_odds: float) -> float:
-    if not math.isfinite(decimal_odds) or decimal_odds <= 1.0:
-        raise InvalidOddsError(f"Cuota inválida: {decimal_odds!r} (debe ser finita y > 1.0)")
-    return decimal_odds
-
-
-def implied_probability(decimal_odds: float) -> float:
-    return 1.0 / validate_odds(decimal_odds)
 
 
 def overround(over_odds: float, under_odds: float) -> float:
