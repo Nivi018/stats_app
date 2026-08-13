@@ -56,7 +56,20 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e "apps/api[dev]"
-      - run: pytest apps/api/tests -v
+      - name: Apply migrations
+        run: |
+          cd apps/api
+          python -m alembic upgrade head
+      - name: Run seed demo
+        run: |
+          cd apps/api
+          python -m app.seeds.run
+      - name: Run tests
+        env:
+          TEST_DATABASE_URL: postgresql+asyncpg://stats:stats@localhost:5432/stats_app
+        run: |
+          cd apps/api
+          pytest tests -v
 
   contracts:
     name: Contracts

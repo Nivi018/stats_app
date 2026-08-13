@@ -10,6 +10,8 @@
     "dev:web": "turbo dev",
     "dev:api": "cd apps\\api && .venv\\Scripts\\uvicorn app.main:app --reload --port 8000",
     "dev:worker": "cd apps\\worker && .venv\\Scripts\\python -m app.main",
+    "db:migrate": "cd apps\\api && .venv\\Scripts\\python -m alembic upgrade head",
+    "db:seed": "cd apps\\api && .venv\\Scripts\\python -m app.seeds.run",
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",
