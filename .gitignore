@@ -62,3 +62,8 @@ yarn-error.log*
 
 # Docker
 **/postgres_data/
+
+# SQLite local test databases
+*.db
+*.sqlite
+*.sqlite3

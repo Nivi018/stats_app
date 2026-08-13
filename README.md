@@ -72,7 +72,7 @@ Copiar `.env.example` a `.env` y ajustar según entorno. Las variables usan el p
 | Variable | Default | Descripción |
 |----------|---------|-------------|
 | `STATS_POSTGRES_HOST` | localhost | Host de PostgreSQL |
-| `STATS_POSTGRES_PORT` | 5432 | Puerto de PostgreSQL |
+| `STATS_POSTGRES_PORT` | 5433 | Puerto de PostgreSQL (Docker remapea 5432→5433) |
 | `STATS_POSTGRES_USER` | stats | Usuario |
 | `STATS_POSTGRES_PASSWORD` | stats | Contraseña |
 | `STATS_POSTGRES_DB` | stats_app | Base de datos |
@@ -97,6 +97,9 @@ Ejecutar eslint desde el directorio de la app: `npx eslint src` en `apps/web`.
 
 **PostgreSQL o Redis no responden**
 Verificar que los contenedores están activos: `docker compose -f infra/docker-compose.yml ps`.
+
+**Conflicto de puertos con PostgreSQL local**
+Si tienes PostgreSQL instalado localmente, ocupa el puerto 5432. Docker usa el puerto 5433 del host para evitarlo. Si el error de conexión persiste, detén el servicio local (`net stop postgresql-x64-16`) o ajusta `STATS_POSTGRES_PORT`.
 
 **python.exe del Microsoft Store**
 Desactivar los alias de ejecución en Configuración > Aplicaciones > Configuración avanzada > Alias de ejecución de aplicaciones, o usar la ruta completa a Python 3.12.

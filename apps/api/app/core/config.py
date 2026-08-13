@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     API_PORT: int = 8000
 
     POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: int = 5432
+    POSTGRES_PORT: int = 5433
     POSTGRES_USER: str = "stats"
     POSTGRES_PASSWORD: str = "stats"
     POSTGRES_DB: str = "stats_app"
@@ -23,6 +23,10 @@ class Settings(BaseSettings):
             f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
+
+    @property
+    def database_url(self) -> str:
+        return self.postgres_url
 
     @property
     def redis_url(self) -> str:
