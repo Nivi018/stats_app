@@ -5,6 +5,7 @@ Las fórmulas base (cuota justa, implícita, edge, EV) viven en `app.domain.odds
 """
 
 import math
+from dataclasses import dataclass
 
 from app.domain.odds import InvalidOddsError, implied_probability, validate_odds
 
@@ -43,6 +44,58 @@ def remove_margin(over_odds: float, under_odds: float) -> tuple[float, float]:
 def de_vig_fair_odds(over_odds: float, under_odds: float) -> tuple[float, float]:
     p_over, p_under = remove_margin(over_odds, under_odds)
     return 1.0 / p_over, 1.0 / p_under
+
+
+@dataclass(frozen=True)
+class DeVigResult:
+    """Resultado de eliminar el margen de un mercado Over/Under 2.5.
+
+    Conserva las cuotas originales y expone estado explícito cuando falta
+    uno de los lados (no lanza error por faltante; solo por cuota inválida).
+    """
+
+    complete: bool
+    over_odds: float | None = None
+    under_odds: float | None = None
+    over_probability: float | None = None
+    under_probability: float | None = None
+    fair_over_odds: float | None = None
+    fair_under_odds: float | None = None
+    missing: str | None = None  # "over" | "under" | "both"
+
+    @property
+    def normalized_overround(self) -> float | None:
+        if not self.complete:
+            return None
+        return self.over_probability + self.under_probability
+
+
+def de_vig(over_odds: float | None, under_odds: float | None) -> DeVigResult:
+    """Elimina el margen normalizando las probabilidades a sumar ~1.0.
+
+    Cuotas inválidas lanzan `InvalidOddsError`; un lado ausente produce un
+    estado `complete=False` con `missing` explícito.
+    """
+    if over_odds is None and under_odds is None:
+        return DeVigResult(complete=False, missing="both")
+    if over_odds is None:
+        validate_odds(under_odds)
+        return DeVigResult(complete=False, under_odds=under_odds, missing="over")
+    if under_odds is None:
+        validate_odds(over_odds)
+        return DeVigResult(complete=False, over_odds=over_odds, missing="under")
+
+    p_over, p_under = remove_margin(over_odds, under_odds)
+    fair_over, fair_under = de_vig_fair_odds(over_odds, under_odds)
+    return DeVigResult(
+        complete=True,
+        over_odds=over_odds,
+        under_odds=under_odds,
+        over_probability=p_over,
+        under_probability=p_under,
+        fair_over_odds=fair_over,
+        fair_under_odds=fair_under,
+    )
 
 
 def overround_is_anomalous(over_odds: float, under_odds: float) -> bool:
