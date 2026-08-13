@@ -9,12 +9,13 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 import json
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.feature_set import FeatureSet
 from app.jobs.runner import DeterministicJobError
 from app.model.baseline import MODEL_NAME, PoissonBaseline
-from app.models import Match, ModelVersion, Prediction, TeamMatchStats
+from app.models import Match, ModelVersion, Prediction
 from app.seeds.loader import load_demo_seed
 
 INGEST_DEMO_JOB = "ingest_demo"
@@ -54,7 +55,15 @@ def build_compute_prediction_handler(session_factory):
             if match is None:
                 raise DeterministicJobError(f"Partido no encontrado: {match_id}")
 
-            lambda_home, lambda_away = await _baseline_lambdas(session, match.id)
+            feature_vector = await FeatureSet().compute(
+                session, match_id, datetime.now(timezone.utc)
+            )
+            if feature_vector is None:
+                raise DeterministicJobError(
+                    f"Sin muestra suficiente para predecir: {match_id}"
+                )
+            lambda_home = feature_vector.lambda_home
+            lambda_away = feature_vector.lambda_away
 
             model_version = await _get_or_create_model_version(session)
             baseline = PoissonBaseline()
@@ -80,8 +89,8 @@ def build_compute_prediction_handler(session_factory):
                         selection=selection,
                         probability=prediction.probability,
                         fair_odds=prediction.fair_odds,
-                        data_quality="medium",
-                        risk_level="medium",
+                        data_quality=feature_vector.data_quality,
+                        risk_level=feature_vector.risk_level,
                         inputs=inputs_json,
                         inputs_hash=prediction.inputs_hash,
                         prediction_timestamp=now,
@@ -90,30 +99,6 @@ def build_compute_prediction_handler(session_factory):
             await session.commit()
 
     return compute_prediction
-
-
-async def _baseline_lambdas(session: AsyncSession, match_id) -> tuple[float, float]:
-    """Lambdas placeholder desde goles promedios del dataset demo.
-
-    El FeatureSet v1 (historia posterior) refinará este cálculo con ventanas,
-    localía y ponderación temporal.
-    """
-    rows = (
-        await session.execute(
-            select(TeamMatchStats.team_id, func.avg(TeamMatchStats.goals))
-            .where(TeamMatchStats.match_id == match_id)
-            .group_by(TeamMatchStats.team_id)
-        )
-    ).all()
-    averages = {str(team_id): float(avg) for team_id, avg in rows}
-
-    result = await session.execute(
-        select(Match).where(Match.id == match_id)
-    )
-    match = result.scalar_one()
-    lambda_home = averages.get(str(match.home_team_id), 1.3)
-    lambda_away = averages.get(str(match.away_team_id), 1.1)
-    return lambda_home, lambda_away
 
 
 async def _get_or_create_model_version(session: AsyncSession) -> ModelVersion:
