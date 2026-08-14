@@ -43,7 +43,15 @@ class OpportunityService:
     def __init__(self, session_factory) -> None:
         self._session_factory = session_factory
 
-    async def get_opportunities(self, at: datetime | None = None) -> list[Opportunity]:
+    async def get_opportunities(
+        self,
+        at: datetime | None = None,
+        *,
+        min_edge: float = 0.0,
+        risk: str | None = None,
+        matchday: int | None = None,
+        sort: str = "edge",
+    ) -> list[Opportunity]:
         at = at or datetime.now(timezone.utc)
         if at.tzinfo is None:
             at = at.replace(tzinfo=timezone.utc)
@@ -63,6 +71,9 @@ class OpportunityService:
 
             opportunities: list[Opportunity] = []
             for match, home_team, away_team in matches:
+                if matchday is not None and match.matchday != matchday:
+                    continue
+
                 preds = (
                     await session.execute(
                         select(Prediction)
@@ -100,30 +111,43 @@ class OpportunityService:
                         data_quality=pred.data_quality,
                         snapshot_age_seconds=age_seconds,
                     )
-                    opportunities.append(
-                        Opportunity(
-                            match_id=match.external_id,
-                            home_team_short=home_team.short_name or home_team.name,
-                            away_team_short=away_team.short_name or away_team.name,
-                            kickoff_at=match.kickoff_at,
-                            market=pred.market,
-                            selection=selection,
-                            model_probability=pred.probability,
-                            market_no_vig_probability=market_no_vig[selection],
-                            observed_odds=snapshot.odds,
-                            fair_odds=pred.fair_odds,
-                            edge_pp=round(edge, 2),
-                            ev=round(ev, 4),
-                            data_quality=pred.data_quality,
-                            risk_level=pred.risk_level,
-                            is_signal=decision.is_signal,
-                            signal_exclusions=decision.exclusions,
-                            snapshot_age_minutes=int(age_seconds / 60),
-                        )
+                    opportunity = Opportunity(
+                        match_id=match.external_id,
+                        home_team_short=home_team.short_name or home_team.name,
+                        away_team_short=away_team.short_name or away_team.name,
+                        kickoff_at=match.kickoff_at,
+                        market=pred.market,
+                        selection=selection,
+                        model_probability=pred.probability,
+                        market_no_vig_probability=market_no_vig[selection],
+                        observed_odds=snapshot.odds,
+                        fair_odds=pred.fair_odds,
+                        edge_pp=round(edge, 2),
+                        ev=round(ev, 4),
+                        data_quality=pred.data_quality,
+                        risk_level=pred.risk_level,
+                        is_signal=decision.is_signal,
+                        signal_exclusions=decision.exclusions,
+                        snapshot_age_minutes=int(age_seconds / 60),
                     )
+                    if opportunity.edge_pp < min_edge:
+                        continue
+                    if risk is not None and opportunity.risk_level != risk:
+                        continue
+                    opportunities.append(opportunity)
 
-            opportunities.sort(key=lambda o: (not o.is_signal, -o.edge_pp))
-            return opportunities
+            return self._sort(opportunities, sort)
+
+    @staticmethod
+    def _sort(opportunities: list[Opportunity], sort: str) -> list[Opportunity]:
+        """Orden determinista: señales primero; desempate por match_id."""
+        if sort == "ev":
+            key = lambda o: (not o.is_signal, -o.ev, o.match_id)
+        elif sort == "probability":
+            key = lambda o: (not o.is_signal, -o.model_probability, o.match_id)
+        else:  # edge (default)
+            key = lambda o: (not o.is_signal, -o.edge_pp, o.match_id)
+        return sorted(opportunities, key=key)
 
     async def _match_snapshots(self, session: AsyncSession, match_id) -> list[Snapshot]:
         rows = (

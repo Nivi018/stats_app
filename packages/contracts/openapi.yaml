@@ -144,6 +144,34 @@ paths:
     get:
       operationId: getOpportunities
       summary: Scanner de oportunidades (señales con edge, EV, calidad y riesgo)
+      parameters:
+        - name: min_edge
+          in: query
+          required: false
+          schema:
+            type: number
+            minimum: -100
+            maximum: 100
+            default: 0
+        - name: risk
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [low, medium, high]
+        - name: matchday
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [edge, ev, probability]
+            default: edge
       responses:
         "200":
           description: OK

@@ -77,8 +77,24 @@ export type OpportunityDto = {
   snapshot_age_minutes: number;
 };
 
-export async function fetchOpportunities(): Promise<OpportunityDto[]> {
-  const response = await fetch("/api/v1/opportunities", {
+export type OpportunityFilters = {
+  minEdge?: number;
+  risk?: "low" | "medium" | "high";
+  matchday?: number;
+  sort?: "edge" | "ev" | "probability";
+};
+
+export async function fetchOpportunities(filters: OpportunityFilters = {}): Promise<OpportunityDto[]> {
+  const params = new URLSearchParams();
+  if (filters.minEdge != null) params.set("min_edge", String(filters.minEdge));
+  if (filters.risk != null) params.set("risk", filters.risk);
+  if (filters.matchday != null) params.set("matchday", String(filters.matchday));
+  if (filters.sort != null && filters.sort !== "edge") params.set("sort", filters.sort);
+
+  const query = params.toString();
+  const url = `/api/v1/opportunities${query ? `?${query}` : ""}`;
+
+  const response = await fetch(url, {
     next: { revalidate: 60 },
   });
 

@@ -1,13 +1,33 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { fetchOpportunities, type OpportunityDto } from "@/lib/api/client";
+import { fetchOpportunities, type OpportunityDto, type OpportunityFilters } from "@/lib/api/client";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Scanner de oportunidades | Stats App",
-  description: "Oportunidades Over/Under 2.5 ordenadas por edge y EV.",
+  description: "Oportunidades Over/Under 2.5 con filtros y orden.",
 };
+
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+function first(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function buildFilters(sp: Awaited<SearchParams>): OpportunityFilters {
+  const filters: OpportunityFilters = {};
+  const minEdge = first(sp.min_edge);
+  const risk = first(sp.risk);
+  const matchday = first(sp.matchday);
+  const sort = first(sp.sort);
+
+  if (minEdge != null && minEdge !== "" && !Number.isNaN(Number(minEdge))) filters.minEdge = Number(minEdge);
+  if (risk === "low" || risk === "medium" || risk === "high") filters.risk = risk;
+  if (matchday != null && matchday !== "" && !Number.isNaN(Number(matchday))) filters.matchday = Number(matchday);
+  if (sort === "ev" || sort === "probability" || sort === "edge") filters.sort = sort;
+  return filters;
+}
 
 function signalLabel(op: OpportunityDto): string {
   if (op.is_signal) return "Señal";
@@ -15,15 +35,28 @@ function signalLabel(op: OpportunityDto): string {
   return "—";
 }
 
-export default async function ScannerPage() {
+function fieldSet(label: string, value: string | undefined): boolean {
+  return value != null && value !== "";
+}
+
+export default async function ScannerPage({ searchParams }: { searchParams: SearchParams }) {
+  const sp = await searchParams;
+  const filters = buildFilters(sp);
+  const rawMinEdge = first(sp.min_edge);
+  const rawRisk = first(sp.risk);
+  const rawMatchday = first(sp.matchday);
+  const activeFilters = fieldSet("edge", rawMinEdge) || fieldSet("riesgo", rawRisk) || fieldSet("jornada", rawMatchday);
+
   let opportunities: OpportunityDto[] = [];
   let error: string | null = null;
 
   try {
-    opportunities = await fetchOpportunities();
+    opportunities = await fetchOpportunities(filters);
   } catch (e) {
     error = e instanceof Error ? e.message : "No se pudo contactar la API";
   }
+
+  const currentSort = filters.sort ?? "edge";
 
   return (
     <main className="min-h-screen bg-[var(--background)] px-5 py-6 text-[var(--foreground)] md:px-10 md:py-10">
@@ -36,6 +69,59 @@ export default async function ScannerPage() {
           Jornada
         </Link>
       </header>
+
+      {/* Filtros: el estado vive en la URL */}
+      <section className="mx-auto mt-8 max-w-6xl border-b border-[var(--rule)] pb-5">
+        <form method="get" className="flex flex-wrap items-end gap-4">
+          <label className="flex flex-col gap-1 text-xs text-[var(--muted)]">
+            Edge mín (pp)
+            <input
+              type="number"
+              name="min_edge"
+              defaultValue={first(sp.min_edge) ?? ""}
+              step="0.5"
+              min={-100}
+              max={100}
+              className="w-24 border border-[var(--rule)] bg-white px-2 py-1.5 text-sm text-[var(--foreground)]"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-[var(--muted)]">
+            Riesgo
+            <select name="risk" defaultValue={first(sp.risk) ?? ""} className="border border-[var(--rule)] bg-white px-2 py-1.5 text-sm">
+              <option value="">Todos</option>
+              <option value="low">Bajo</option>
+              <option value="medium">Medio</option>
+              <option value="high">Alto</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-[var(--muted)]">
+            Jornada
+            <input
+              type="number"
+              name="matchday"
+              defaultValue={first(sp.matchday) ?? ""}
+              min={1}
+              className="w-20 border border-[var(--rule)] bg-white px-2 py-1.5 text-sm text-[var(--foreground)]"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-[var(--muted)]">
+            Orden
+            <select name="sort" defaultValue={currentSort} className="border border-[var(--rule)] bg-white px-2 py-1.5 text-sm">
+              <option value="edge">Edge</option>
+              <option value="ev">EV</option>
+              <option value="probability">Probabilidad</option>
+            </select>
+          </label>
+          <button type="submit" className="border border-[var(--foreground)] px-4 py-1.5 text-sm font-semibold">
+            Aplicar
+          </button>
+          {activeFilters && (
+            <Link href="/scanner" className="text-xs text-[var(--muted)] underline">
+              Limpiar filtros
+            </Link>
+          )}
+        </form>
+      </section>
 
       {error && (
         <div role="alert" className="mx-auto mt-8 max-w-6xl border border-red-300 bg-red-50 p-5 text-sm text-red-800">
@@ -50,7 +136,9 @@ export default async function ScannerPage() {
 
       {!error && opportunities.length === 0 && (
         <div className="mx-auto mt-10 max-w-6xl border-t border-[var(--rule)] py-8 text-sm text-[var(--muted)]">
-          No hay oportunidades aún. Ejecuta el job <code>compute_prediction</code> para cada partido.
+          {activeFilters
+            ? "Ninguna oportunidad cumple los filtros seleccionados. Ajusta el edge mínimo o el nivel de riesgo."
+            : "No hay oportunidades aún. Ejecuta el job compute_prediction para cada partido."}
         </div>
       )}
 
@@ -91,10 +179,7 @@ export default async function ScannerPage() {
                     <td className="py-3 pr-4 text-right tabular-nums">{op.ev.toFixed(3)}</td>
                     <td className="py-3 pr-4">{op.data_quality}</td>
                     <td className="py-3 pr-4">
-                      <span
-                        className="inline-flex items-center gap-1.5"
-                        title={`Riesgo ${op.risk_level}`}
-                      >
+                      <span className="inline-flex items-center gap-1.5" title={`Riesgo ${op.risk_level}`}>
                         <span
                           className="inline-block h-2 w-2 rounded-full"
                           style={{
@@ -110,13 +195,7 @@ export default async function ScannerPage() {
                       </span>
                     </td>
                     <td className="py-3">
-                      <span
-                        className={
-                          op.is_signal
-                            ? "font-semibold text-[var(--accent)]"
-                            : "text-[var(--muted)]"
-                        }
-                      >
+                      <span className={op.is_signal ? "font-semibold text-[var(--accent)]" : "text-[var(--muted)]"}>
                         {signalLabel(op)}
                       </span>
                     </td>

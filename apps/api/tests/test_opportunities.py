@@ -87,3 +87,55 @@ async def test_no_predictions_returns_empty(session):
     service = OpportunityService(session_factory)
     opportunities = await service.get_opportunities(at=AT)
     assert opportunities == []
+
+
+@pytest.mark.asyncio
+async def test_filter_by_min_edge(computed):
+    service = OpportunityService(session_factory)
+    all_op = await service.get_opportunities(at=AT, min_edge=-100)
+    none_op = await service.get_opportunities(at=AT, min_edge=9999)
+
+    assert all_op
+    assert none_op == []
+    assert all(o.edge_pp >= -100 for o in all_op)
+
+
+@pytest.mark.asyncio
+async def test_filter_by_risk(computed):
+    service = OpportunityService(session_factory)
+    low_risk = await service.get_opportunities(at=AT, risk="low")
+
+    assert all(o.risk_level == "low" for o in low_risk)
+
+
+@pytest.mark.asyncio
+async def test_filter_by_matchday(computed):
+    service = OpportunityService(session_factory)
+    jornada_1 = await service.get_opportunities(at=AT, matchday=1)
+    jornada_99 = await service.get_opportunities(at=AT, matchday=99)
+
+    assert jornada_1
+    assert jornada_99 == []
+
+
+@pytest.mark.asyncio
+async def test_sort_is_deterministic(computed):
+    service = OpportunityService(session_factory)
+    a = await service.get_opportunities(at=AT, sort="edge")
+    b = await service.get_opportunities(at=AT, sort="edge")
+
+    assert a == b
+    edges = [o.edge_pp for o in a]
+    assert edges == sorted(edges, reverse=True) or any(o.is_signal for o in a)
+
+
+@pytest.mark.asyncio
+async def test_sort_by_ev(computed):
+    service = OpportunityService(session_factory)
+    by_ev = await service.get_opportunities(at=AT, sort="ev")
+
+    evs = [o.ev for o in by_ev if not o.is_signal]
+    signals = [o for o in by_ev if o.is_signal]
+    assert signals or evs
+    if len(evs) >= 2:
+        assert evs == sorted(evs, reverse=True)

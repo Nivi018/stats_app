@@ -115,6 +115,7 @@ class DemoMatch:
     status: str
     home_score: int | None
     away_score: int | None
+    matchday: int | None = None
 
 
 @dataclass
@@ -212,6 +213,7 @@ def _build_upcoming(home: str, away: str, index: int) -> DemoMatch:
         status="scheduled",
         home_score=None,
         away_score=None,
+        matchday=1,
     )
 
 

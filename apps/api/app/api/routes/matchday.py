@@ -134,9 +134,18 @@ def get_opportunity_service(request: Request) -> OpportunityService:
 
 @router.get("/opportunities", response_model=list[OpportunityDto])
 async def get_opportunities(
+    min_edge: float = Query(0, ge=-100, le=100, description="Edge mínimo en puntos porcentuales"),
+    risk: str | None = Query(None, pattern="^(low|medium|high)$", description="Filtrar por nivel de riesgo"),
+    matchday: int | None = Query(None, ge=1, description="Filtrar por jornada"),
+    sort: str = Query("edge", pattern="^(edge|ev|probability)$", description="Orden"),
     service: OpportunityService = Depends(get_opportunity_service),
 ):
-    opportunities = await service.get_opportunities()
+    opportunities = await service.get_opportunities(
+        min_edge=min_edge,
+        risk=risk,
+        matchday=matchday,
+        sort=sort,
+    )
     return [
         OpportunityDto(
             match_id=o.match_id,

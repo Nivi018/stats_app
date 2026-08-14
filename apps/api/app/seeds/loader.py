@@ -133,6 +133,7 @@ async def _load_matches(
                 status=demo.status,
                 home_score=demo.home_score,
                 away_score=demo.away_score,
+                matchday=demo.matchday,
                 is_demo=True,
             )
             session.add(match)

@@ -128,4 +128,27 @@ describe("fetchOpportunities", () => {
 
     await expect(fetchOpportunities()).rejects.toThrow(ApiError);
   });
+
+  it("passes filters as query params", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchOpportunities({ minEdge: 5, risk: "low", matchday: 1, sort: "ev" });
+
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("min_edge=5");
+    expect(calledUrl).toContain("risk=low");
+    expect(calledUrl).toContain("matchday=1");
+    expect(calledUrl).toContain("sort=ev");
+  });
+
+  it("omits sort when default edge", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchOpportunities({ sort: "edge" });
+
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).not.toContain("sort=");
+  });
 });
