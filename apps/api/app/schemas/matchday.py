@@ -87,3 +87,23 @@ class ErrorDto(BaseModel):
     message: str
     details: dict | None = None
     correlation_id: str
+
+
+class OpportunityDto(BaseModel):
+    match_id: str
+    home_team_short: str
+    away_team_short: str
+    kickoff_at: datetime
+    market: str
+    selection: str
+    model_probability: float
+    market_no_vig_probability: float
+    observed_odds: float
+    fair_odds: float
+    edge_pp: float
+    ev: float
+    data_quality: str
+    risk_level: str
+    is_signal: bool
+    signal_exclusions: list[str]
+    snapshot_age_minutes: int

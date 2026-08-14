@@ -8,12 +8,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.matchday import MatchdayService
+from app.application.opportunities import OpportunityService
 from app.core.errors import error_response
 from app.models import Prediction
 from app.schemas.matchday import (
     MatchDetailDto,
     MatchdayDto,
     OddsDto,
+    OpportunityDto,
     PredictionDto,
     TeamMatchStatsDto,
 )
@@ -123,3 +125,37 @@ async def get_prediction(
     if prediction is None:
         return error_response(404, "not_found", f"Predicción no encontrada: {prediction_id}", request)
     return PredictionDto.model_validate(prediction)
+
+
+def get_opportunity_service(request: Request) -> OpportunityService:
+    factory = getattr(request.app.state, "session_factory", None)
+    return OpportunityService(factory)
+
+
+@router.get("/opportunities", response_model=list[OpportunityDto])
+async def get_opportunities(
+    service: OpportunityService = Depends(get_opportunity_service),
+):
+    opportunities = await service.get_opportunities()
+    return [
+        OpportunityDto(
+            match_id=o.match_id,
+            home_team_short=o.home_team_short,
+            away_team_short=o.away_team_short,
+            kickoff_at=o.kickoff_at,
+            market=o.market,
+            selection=o.selection,
+            model_probability=o.model_probability,
+            market_no_vig_probability=o.market_no_vig_probability,
+            observed_odds=o.observed_odds,
+            fair_odds=o.fair_odds,
+            edge_pp=o.edge_pp,
+            ev=o.ev,
+            data_quality=o.data_quality,
+            risk_level=o.risk_level,
+            is_signal=o.is_signal,
+            signal_exclusions=o.signal_exclusions,
+            snapshot_age_minutes=o.snapshot_age_minutes,
+        )
+        for o in opportunities
+    ]

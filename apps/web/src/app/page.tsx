@@ -1,5 +1,7 @@
 import { fetchMatchday, type MatchDto } from "@/lib/api/client";
 
+export const dynamic = "force-dynamic";
+
 function isStale(updatedAt: string, maxAgeMs = 30 * 60 * 1000): boolean {
   const age = Date.now() - new Date(updatedAt).getTime();
   return age > maxAgeMs;

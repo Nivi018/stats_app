@@ -56,3 +56,39 @@ export async function fetchMatchday(): Promise<MatchdayDto> {
 
   return (await response.json()) as MatchdayDto;
 }
+
+export type OpportunityDto = {
+  match_id: string;
+  home_team_short: string;
+  away_team_short: string;
+  kickoff_at: string;
+  market: string;
+  selection: "over" | "under";
+  model_probability: number;
+  market_no_vig_probability: number;
+  observed_odds: number;
+  fair_odds: number;
+  edge_pp: number;
+  ev: number;
+  data_quality: string;
+  risk_level: string;
+  is_signal: boolean;
+  signal_exclusions: string[];
+  snapshot_age_minutes: number;
+};
+
+export async function fetchOpportunities(): Promise<OpportunityDto[]> {
+  const response = await fetch("/api/v1/opportunities", {
+    next: { revalidate: 60 },
+  });
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as ErrorDto | null;
+    throw new ApiError(
+      response.status,
+      payload ?? { code: "unknown", message: response.statusText, details: null, correlation_id: "" },
+    );
+  }
+
+  return (await response.json()) as OpportunityDto[];
+}

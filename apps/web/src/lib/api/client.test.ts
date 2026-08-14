@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { ApiError, fetchMatchday } from "@/lib/api/client";
+import { ApiError, fetchMatchday, fetchOpportunities } from "@/lib/api/client";
 
 const matchdayFixture = {
   matchday: 1,
@@ -76,5 +76,56 @@ describe("fetchMatchday", () => {
     const promise = fetchMatchday();
     await expect(promise).rejects.toThrow(ApiError);
     await expect(promise).rejects.toMatchObject({ status: 502 });
+  });
+});
+
+describe("fetchOpportunities", () => {
+  it("returns parsed opportunities with signal flag", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => [
+          {
+            match_id: "match-up-01",
+            home_team_short: "AME",
+            away_team_short: "CAZ",
+            kickoff_at: "2026-08-03T17:00:00Z",
+            market: "over_under_2_5",
+            selection: "over",
+            model_probability: 0.6,
+            market_no_vig_probability: 0.5,
+            observed_odds: 2.0,
+            fair_odds: 1.6667,
+            edge_pp: 10,
+            ev: 0.2,
+            data_quality: "high",
+            risk_level: "low",
+            is_signal: true,
+            signal_exclusions: [],
+            snapshot_age_minutes: 5,
+          },
+        ],
+      }),
+    );
+
+    const result = await fetchOpportunities();
+    expect(result).toHaveLength(1);
+    expect(result[0].is_signal).toBe(true);
+    expect(result[0].edge_pp).toBe(10);
+  });
+
+  it("throws ApiError on failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: "Error",
+        json: async () => ({ code: "internal_error", message: "boom", details: null, correlation_id: "x" }),
+      }),
+    );
+
+    await expect(fetchOpportunities()).rejects.toThrow(ApiError);
   });
 });

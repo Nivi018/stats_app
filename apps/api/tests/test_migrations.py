@@ -5,6 +5,7 @@ Los tests son síncronos porque Alembic gestiona su propio event loop.
 """
 
 import asyncio
+import os
 import sys
 
 import psycopg
@@ -17,10 +18,13 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
+TEST_DIR = os.path.dirname(__file__)
+API_DIR = os.path.dirname(TEST_DIR)
+ALEMBIC_DIR = os.path.join(API_DIR, "alembic")
+
 ADMIN_DSN = "postgresql://stats:stats@localhost:5433/postgres"
 MIGRATE_DB = "stats_app_migtest"
 MIGRATE_URL = f"postgresql+asyncpg://stats:stats@localhost:5433/{MIGRATE_DB}"
-ALEMBIC_INI = "alembic.ini"
 HEAD_REVISION = "06de9ee1fdc3"
 
 _TABLES = {
@@ -53,8 +57,8 @@ def _migrate_db():
 
 
 def _alembic_config() -> Config:
-    cfg = Config(ALEMBIC_INI)
-    cfg.set_main_option("script_location", "alembic")
+    cfg = Config(os.path.join(API_DIR, "alembic.ini"))
+    cfg.set_main_option("script_location", ALEMBIC_DIR)
     cfg.set_main_option("sqlalchemy.url", MIGRATE_URL)
     return cfg
 
