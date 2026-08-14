@@ -163,7 +163,9 @@ export default async function ScannerPage({ searchParams }: { searchParams: Sear
                 {opportunities.map((op) => (
                   <tr key={`${op.match_id}-${op.selection}`} className="border-b border-[var(--rule)]">
                     <td className="py-3 pr-4 font-semibold">
-                      {op.home_team_short} – {op.away_team_short}
+                      <Link href={`/matches/${op.match_id}`} className="underline decoration-[var(--rule)] underline-offset-2 hover:decoration-[var(--foreground)]">
+                        {op.home_team_short} – {op.away_team_short}
+                      </Link>
                     </td>
                     <td className="py-3 pr-4">
                       {op.selection === "over" ? "Over 2.5" : "Under 2.5"}

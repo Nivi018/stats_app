@@ -94,11 +94,13 @@ async def get_match_detail(
     odds = await service.get_match_odds(match_id)
     over, under = _odds_selection(odds)
     stats = await service.get_match_stats(match_id)
+    predictions = await service.get_match_predictions(match_id)
 
     return MatchDetailDto(
         match=_build_match_dto(match, over, under),
         stats=[TeamMatchStatsDto(**s.__dict__) for s in stats],
         odds=[_to_odds_dto(o) for o in odds],
+        predictions=[PredictionDto.model_validate(p) for p in predictions],
     )
 
 

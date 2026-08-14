@@ -55,12 +55,6 @@ class OddsDto(BaseModel):
     provider: str
 
 
-class MatchDetailDto(BaseModel):
-    match: MatchDto
-    stats: list[TeamMatchStatsDto]
-    odds: list[OddsDto]
-
-
 class PredictionDto(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -80,6 +74,13 @@ class PredictionDto(BaseModel):
     inputs: str | None = None
     inputs_hash: str
     prediction_timestamp: datetime
+
+
+class MatchDetailDto(BaseModel):
+    match: MatchDto
+    stats: list[TeamMatchStatsDto]
+    odds: list[OddsDto]
+    predictions: list[PredictionDto] = []
 
 
 class ErrorDto(BaseModel):

@@ -330,6 +330,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Odds"
+        predictions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Prediction"
 
     Prediction:
       type: object

@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.providers import DomainMatch, DomainOddsSnapshot, DomainTeamMatchStats
-from app.models import Prediction
+from app.models import Match, Prediction
 from app.providers.demo import DemoOddsProvider, DemoSportsDataProvider
 
 
@@ -36,6 +36,28 @@ class MatchdayService:
 
     async def get_match_odds(self, match_id: str) -> list[DomainOddsSnapshot]:
         return await self._odds.get_odds_snapshots(match_id)
+
+    async def get_match_predictions(self, match_id: str) -> list[Prediction]:
+        """Última predicción por selección para un partido."""
+        if self._session_factory is None:
+            return []
+        async with self._session_factory() as session:
+            match = (
+                await session.execute(select(Match).where(Match.external_id == match_id))
+            ).scalar_one_or_none()
+            if match is None:
+                return []
+            preds = (
+                await session.execute(
+                    select(Prediction)
+                    .where(Prediction.match_id == match.id)
+                    .order_by(Prediction.prediction_timestamp.desc())
+                )
+            ).scalars().all()
+            latest: dict[str, Prediction] = {}
+            for pred in preds:
+                latest.setdefault(pred.selection, pred)
+            return list(latest.values())
 
     async def get_prediction(self, prediction_id: str) -> Prediction | None:
         if self._session_factory is None:

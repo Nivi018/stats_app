@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { ApiError, fetchMatchday, fetchOpportunities } from "@/lib/api/client";
+import { ApiError, fetchMatchday, fetchMatchDetail, fetchOpportunities } from "@/lib/api/client";
 
 const matchdayFixture = {
   matchday: 1,
@@ -150,5 +150,54 @@ describe("fetchOpportunities", () => {
 
     const calledUrl = fetchMock.mock.calls[0][0] as string;
     expect(calledUrl).not.toContain("sort=");
+  });
+});
+
+describe("fetchMatchDetail", () => {
+  it("requests the match detail URL and parses predictions", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        match: {
+          id: "match-up-01",
+          competition: "Liga MX",
+          kickoff_at: "2026-08-03T17:00:00Z",
+          home_team: { id: "mx-ame", name: "Club América", short_name: "AME" },
+          away_team: { id: "mx-caz", name: "Cruz Azul", short_name: "CAZ" },
+          status: "scheduled",
+          over_odds: 1.9,
+          under_odds: 1.95,
+        },
+        stats: [],
+        odds: [],
+        predictions: [
+          {
+            id: "p1",
+            match_id: "m",
+            model_version_id: "mv",
+            market: "over_under_2_5",
+            selection: "over",
+            probability: 0.6,
+            fair_odds: 1.6667,
+            implied_probability: null,
+            no_vig_probability: null,
+            edge_pp: null,
+            ev: null,
+            data_quality: "high",
+            risk_level: "low",
+            inputs: '{"model_version":"1.0.0"}',
+            inputs_hash: "abc",
+            prediction_timestamp: "2026-08-11T08:00:00Z",
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fetchMatchDetail("match-up-01");
+
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/matches/match-up-01");
+    expect(result.predictions).toHaveLength(1);
+    expect(result.predictions[0].probability).toBe(0.6);
   });
 });

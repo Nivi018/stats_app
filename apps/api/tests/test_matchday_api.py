@@ -75,6 +75,38 @@ async def test_match_detail_404_has_correlation_id(client):
 
 
 @pytest.mark.asyncio
+async def test_match_detail_includes_predictions(seeded_session):
+    from app.jobs.broker import QueueBroker
+    from app.jobs.handlers import COMPUTE_PREDICTION_JOB, build_handlers
+    from app.jobs.payload import JobEnvelope
+    from app.jobs.runner import JobRunner
+
+    broker = QueueBroker()
+    await broker.flush()
+    runner = JobRunner(broker=broker, session_factory=session_factory, handlers=build_handlers(session_factory))
+    await broker.enqueue(JobEnvelope(
+        job_type=COMPUTE_PREDICTION_JOB,
+        idempotency_key="detail-pred",
+        payload={"match_id": "match-up-01"},
+    ))
+    await runner.process_one()
+    await broker.close()
+
+    app.state.session_factory = session_factory
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/api/v1/matches/match-up-01")
+    app.state.session_factory = None
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["predictions"]) == 2
+    assert {p["selection"] for p in data["predictions"]} == {"over", "under"}
+    assert all(p["data_quality"] in {"high", "medium", "low"} for p in data["predictions"])
+    assert all(p["inputs_hash"] for p in data["predictions"])
+
+
+@pytest.mark.asyncio
 async def test_match_odds(client):
     response = await client.get("/api/v1/matches/match-up-01/odds")
     assert response.status_code == 200
