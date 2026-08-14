@@ -57,6 +57,8 @@ export default async function ScannerPage({ searchParams }: { searchParams: Sear
   }
 
   const currentSort = filters.sort ?? "edge";
+  const maxSnapshotAge = opportunities.length > 0 ? Math.max(...opportunities.map((o) => o.snapshot_age_minutes)) : 0;
+  const stale = !error && opportunities.length > 0 && maxSnapshotAge > 30;
 
   return (
     <main className="min-h-screen bg-[var(--background)] px-5 py-6 text-[var(--foreground)] md:px-10 md:py-10">
@@ -134,6 +136,12 @@ export default async function ScannerPage({ searchParams }: { searchParams: Sear
         </div>
       )}
 
+      {stale && (
+        <div role="status" className="mx-auto mt-8 max-w-6xl border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-900">
+          Algunas cuotas tienen más de 30 minutos de antigüedad. La información puede estar desactualizada.
+        </div>
+      )}
+
       {!error && opportunities.length === 0 && (
         <div className="mx-auto mt-10 max-w-6xl border-t border-[var(--rule)] py-8 text-sm text-[var(--muted)]">
           {activeFilters
@@ -148,15 +156,15 @@ export default async function ScannerPage({ searchParams }: { searchParams: Sear
             <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-[var(--rule)] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
-                  <th className="py-3 pr-4 font-semibold">Partido</th>
-                  <th className="py-3 pr-4 font-semibold">Mercado</th>
-                  <th className="py-3 pr-4 font-semibold text-right">P. modelo</th>
-                  <th className="py-3 pr-4 font-semibold text-right">Cuota</th>
-                  <th className="py-3 pr-4 font-semibold text-right">Edge</th>
-                  <th className="py-3 pr-4 font-semibold text-right">EV</th>
-                  <th className="py-3 pr-4 font-semibold">Calidad</th>
-                  <th className="py-3 pr-4 font-semibold">Riesgo</th>
-                  <th className="py-3 font-semibold">Estado</th>
+                  <th scope="col" className="py-3 pr-4 font-semibold">Partido</th>
+                  <th scope="col" className="py-3 pr-4 font-semibold">Mercado</th>
+                  <th scope="col" className="py-3 pr-4 font-semibold text-right">P. modelo</th>
+                  <th scope="col" className="py-3 pr-4 font-semibold text-right">Cuota</th>
+                  <th scope="col" className="py-3 pr-4 font-semibold text-right">Edge</th>
+                  <th scope="col" className="py-3 pr-4 font-semibold text-right">EV</th>
+                  <th scope="col" className="py-3 pr-4 font-semibold">Calidad</th>
+                  <th scope="col" className="py-3 pr-4 font-semibold">Riesgo</th>
+                  <th scope="col" className="py-3 font-semibold">Estado</th>
                 </tr>
               </thead>
               <tbody>

@@ -23,7 +23,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col" suppressHydrationWarning>{children}</body>
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        <a href="#main" className="skip-link">
+          Saltar al contenido
+        </a>
+        <div id="main" className="flex-1">
+          {children}
+        </div>
+      </body>
     </html>
   );
 }

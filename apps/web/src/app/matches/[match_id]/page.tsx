@@ -53,9 +53,9 @@ function StatsTable({
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-[var(--rule)] text-left text-xs uppercase text-[var(--muted)]">
-          <th className="py-2">Métrica</th>
-          {home && <th className="py-2 text-right">{homeName}</th>}
-          {away && <th className="py-2 text-right">{awayName}</th>}
+          <th scope="col" className="py-2">Métrica</th>
+          {home && <th scope="col" className="py-2 text-right">{homeName}</th>}
+          {away && <th scope="col" className="py-2 text-right">{awayName}</th>}
         </tr>
       </thead>
       <tbody>
