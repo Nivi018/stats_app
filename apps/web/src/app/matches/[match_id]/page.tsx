@@ -118,6 +118,65 @@ function ModelPanel({ predictions }: { predictions: PredictionDto[] }) {
   );
 }
 
+function ExplanationPanel({ predictions }: { predictions: PredictionDto[] }) {
+  const first = predictions[0];
+  if (!first?.explanation) return null;
+  const e = first.explanation;
+
+  return (
+    <div className="mt-4 space-y-4 border border-[var(--rule)] p-5 text-sm">
+      <p>{e.summary}</p>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Factores</p>
+        <ul className="mt-2 list-inside list-disc space-y-1">
+          {e.factors.map((f) => (
+            <li key={f}>{f}</li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Riesgos</p>
+        <ul className="mt-2 list-inside list-disc space-y-1">
+          {e.risks.map((r) => (
+            <li key={r}>{r}</li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Fórmula</p>
+        <p className="mt-1 font-mono text-xs">{e.formula}</p>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Procedencia</p>
+        <dl className="mt-2 space-y-1 text-xs">
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--muted)]">Dataset</dt>
+            <dd className="tabular-nums">{e.provenance.dataset ?? "—"}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--muted)]">FeatureSet</dt>
+            <dd className="tabular-nums">{e.provenance.feature_set_version ?? "—"}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--muted)]">Modelo</dt>
+            <dd className="tabular-nums">{e.model_version ?? "—"}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--muted)]">Hash de inputs</dt>
+            <dd className="max-w-[180px] truncate font-mono" title={e.provenance.inputs_hash}>
+              {e.provenance.inputs_hash}
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  );
+}
+
 export default async function MatchDetailPage({ params }: Props) {
   const { match_id } = await params;
 
@@ -178,6 +237,13 @@ export default async function MatchDetailPage({ params }: Props) {
         <div className="mt-4">
           <ModelPanel predictions={detail!.predictions} />
         </div>
+
+        {detail!.predictions.length > 0 && (
+          <>
+            <h2 className="mt-10 text-sm font-semibold tracking-[0.15em] text-[var(--muted)]">EXPLICACIÓN</h2>
+            <ExplanationPanel predictions={detail!.predictions} />
+          </>
+        )}
 
         <h2 className="mt-10 text-sm font-semibold tracking-[0.15em] text-[var(--muted)]">ESTADÍSTICAS</h2>
         <div className="mt-4">

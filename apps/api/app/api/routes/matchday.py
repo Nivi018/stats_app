@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.matchday import MatchdayService
 from app.application.opportunities import OpportunityService
 from app.core.errors import error_response
+from app.explanation.builder import build_explanation
 from app.models import Prediction
 from app.schemas.matchday import (
     MatchDetailDto,
@@ -62,6 +63,12 @@ def _to_odds_dto(o) -> OddsDto:
     )
 
 
+def _to_prediction_dto(prediction: Prediction) -> PredictionDto:
+    dto = PredictionDto.model_validate(prediction)
+    dto.explanation = build_explanation(prediction)
+    return dto
+
+
 @router.get("/matchdays/current", response_model=MatchdayDto)
 async def get_current_matchday(
     matchday: int = Query(1, ge=1, description="Número de jornada"),
@@ -100,7 +107,7 @@ async def get_match_detail(
         match=_build_match_dto(match, over, under),
         stats=[TeamMatchStatsDto(**s.__dict__) for s in stats],
         odds=[_to_odds_dto(o) for o in odds],
-        predictions=[PredictionDto.model_validate(p) for p in predictions],
+        predictions=[_to_prediction_dto(p) for p in predictions],
     )
 
 
@@ -126,7 +133,7 @@ async def get_prediction(
     prediction = await service.get_prediction(prediction_id)
     if prediction is None:
         return error_response(404, "not_found", f"Predicción no encontrada: {prediction_id}", request)
-    return PredictionDto.model_validate(prediction)
+    return _to_prediction_dto(prediction)
 
 
 def get_opportunity_service(request: Request) -> OpportunityService:

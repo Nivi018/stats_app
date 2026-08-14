@@ -380,6 +380,40 @@ components:
         prediction_timestamp:
           type: string
           format: date-time
+        explanation:
+          type: object
+          nullable: true
+          properties:
+            summary:
+              type: string
+            factors:
+              type: array
+              items:
+                type: string
+            risks:
+              type: array
+              items:
+                type: string
+            formula:
+              type: string
+            provenance:
+              type: object
+              properties:
+                dataset:
+                  type: string
+                  nullable: true
+                feature_set_version:
+                  type: string
+                  nullable: true
+                inputs_hash:
+                  type: string
+            model_version:
+              type: string
+              nullable: true
+            prediction_timestamp:
+              type: string
+            is_guarantee:
+              type: boolean
 
     Opportunity:
       type: object

@@ -74,6 +74,7 @@ class PredictionDto(BaseModel):
     inputs: str | None = None
     inputs_hash: str
     prediction_timestamp: datetime
+    explanation: dict | None = None
 
 
 class MatchDetailDto(BaseModel):

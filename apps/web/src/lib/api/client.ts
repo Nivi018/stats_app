@@ -84,6 +84,21 @@ export type OpportunityFilters = {
   sort?: "edge" | "ev" | "probability";
 };
 
+export type SignalExplanation = {
+  summary: string;
+  factors: string[];
+  risks: string[];
+  formula: string;
+  provenance: {
+    dataset: string | null;
+    feature_set_version: string | null;
+    inputs_hash: string;
+  };
+  model_version: string | null;
+  prediction_timestamp: string;
+  is_guarantee: boolean;
+};
+
 export type PredictionDto = {
   id: string;
   match_id: string;
@@ -101,6 +116,7 @@ export type PredictionDto = {
   inputs: string | null;
   inputs_hash: string;
   prediction_timestamp: string;
+  explanation: SignalExplanation | null;
 };
 
 export type TeamMatchStatsDto = {
