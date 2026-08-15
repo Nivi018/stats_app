@@ -32,7 +32,7 @@ async def test_seed_loads_expected_counts(session: AsyncSession):
     assert historical == 30
     assert upcoming == 12
     assert stats == 58
-    assert odds == 22
+    assert odds == 82  # 60 históricas (prepartido) + 22 próximas
 
 
 @pytest.mark.asyncio

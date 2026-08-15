@@ -37,7 +37,7 @@ async def test_flush_redis_does_not_lose_history(session):
 
     assert matches_after == matches_before == 42
     assert teams_after == teams_before == 12
-    assert odds_after == odds_before == 22
+    assert odds_after == odds_before == 82  # 60 históricas + 22 próximas
 
 
 @pytest.mark.asyncio

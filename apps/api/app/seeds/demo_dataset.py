@@ -5,7 +5,7 @@ y backend produzcan exactamente los mismos datos con el mismo seed.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 SEED_VERSION = "1.0.0"
 
@@ -156,7 +156,7 @@ def pick_from_seed(seed: int, options: list[int]) -> int:
     return options[(seed * 7919 + 104729) % len(options)]
 
 
-def _build_historical(home: str, away: str, index: int) -> tuple[DemoMatch, list[DemoStats]]:
+def _build_historical(home: str, away: str, index: int) -> tuple[DemoMatch, list[DemoStats], list[DemoOdds]]:
     seed = index + 1
     hg = pick_from_seed(seed, [0, 1, 1, 1, 2, 2, 2, 3])
     ag = pick_from_seed(seed + 7, [0, 0, 1, 1, 1, 1, 2, 3])
@@ -175,8 +175,11 @@ def _build_historical(home: str, away: str, index: int) -> tuple[DemoMatch, list
         away_score=ag,
     )
 
+    # Cuota prepartido del mercado demo, observada un día antes del kickoff.
+    odds = _odds_for(match_id, index, kickoff - timedelta(days=1))
+
     if match_id in INTENTIONAL_INCOMPLETE_STATS:
-        return match, []
+        return match, [], odds
 
     stats = [
         DemoStats(
@@ -198,7 +201,7 @@ def _build_historical(home: str, away: str, index: int) -> tuple[DemoMatch, list
             corners=pick_from_seed(seed + 41, [2, 3, 4, 4, 5, 6, 7, 7]),
         ),
     ]
-    return match, stats
+    return match, stats, odds
 
 
 def _build_upcoming(home: str, away: str, index: int) -> DemoMatch:
@@ -217,16 +220,14 @@ def _build_upcoming(home: str, away: str, index: int) -> DemoMatch:
     )
 
 
-def _build_odds(match_id: str, index: int) -> list[DemoOdds]:
-    if match_id in INTENTIONAL_INCOMPLETE_ODDS:
-        return []
-
+def _odds_for(match_id: str, index: int, observed_at: datetime) -> list[DemoOdds]:
     seed = index + 1
     over = pick_from_seed(seed, [160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 220]) / 100
     under_base = 1 / (1 - (seed * 29 + 17) % 8 / 75)
     fair_sum = 1 / over + 1 / under_base
     under = round(1 / (fair_sum - 1 / over), 2)
-    observed = datetime(2026, 8, 11, 8, 0, tzinfo=timezone.utc)
+    if under <= 1.0:
+        under = 1.01  # cuota decimal válida (> 1.0)
 
     return [
         DemoOdds(
@@ -236,7 +237,7 @@ def _build_odds(match_id: str, index: int) -> list[DemoOdds]:
             line=2.5,
             selection="over",
             odds=over,
-            observed_at=observed,
+            observed_at=observed_at,
         ),
         DemoOdds(
             match_external_id=match_id,
@@ -245,9 +246,16 @@ def _build_odds(match_id: str, index: int) -> list[DemoOdds]:
             line=2.5,
             selection="under",
             odds=under,
-            observed_at=observed,
+            observed_at=observed_at,
         ),
     ]
+
+
+def _build_odds(match_id: str, index: int) -> list[DemoOdds]:
+    if match_id in INTENTIONAL_INCOMPLETE_ODDS:
+        return []
+    observed = datetime(2026, 8, 11, 8, 0, tzinfo=timezone.utc)
+    return _odds_for(match_id, index, observed)
 
 
 def build_demo_dataset() -> DemoDataset:
@@ -257,9 +265,10 @@ def build_demo_dataset() -> DemoDataset:
     odds: list[DemoOdds] = []
 
     for i, (home, away) in enumerate(HISTORICAL_PAIRS):
-        match, match_stats = _build_historical(home, away, i)
+        match, match_stats, match_odds = _build_historical(home, away, i)
         matches.append(match)
         stats.extend(match_stats)
+        odds.extend(match_odds)
 
     for i, (home, away) in enumerate(UPCOMING_PAIRS):
         match = _build_upcoming(home, away, i)
