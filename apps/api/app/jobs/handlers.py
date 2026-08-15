@@ -5,27 +5,30 @@
   una transacción propia: si falla a mitad, no se publica nada parcial.
 """
 
-from collections.abc import Callable
-from datetime import datetime, timezone
 import json
+from collections.abc import Callable
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domain.resolve import resolve_outcome
 from app.features.feature_set import FeatureSet
-from app.jobs.runner import DeterministicJobError
+from app.jobs.runner import DeterministicJobError, TransientJobError
 from app.model.baseline import MODEL_NAME, PoissonBaseline
-from app.models import Match, ModelVersion, Prediction
+from app.models import Match, ModelVersion, Prediction, PredictionOutcome
 from app.seeds.loader import load_demo_seed
 
 INGEST_DEMO_JOB = "ingest_demo"
 COMPUTE_PREDICTION_JOB = "compute_prediction"
+RESOLVE_PREDICTION_JOB = "resolve_prediction"
 
 
 def build_handlers(session_factory=None) -> dict:
     handlers: dict[str, Callable] = {INGEST_DEMO_JOB: ingest_demo}
     if session_factory is not None:
         handlers[COMPUTE_PREDICTION_JOB] = build_compute_prediction_handler(session_factory)
+        handlers[RESOLVE_PREDICTION_JOB] = build_resolve_prediction_handler(session_factory)
     return handlers
 
 
@@ -56,7 +59,7 @@ def build_compute_prediction_handler(session_factory):
                 raise DeterministicJobError(f"Partido no encontrado: {match_id}")
 
             feature_vector = await FeatureSet().compute(
-                session, match_id, datetime.now(timezone.utc)
+                session, match_id, datetime.now(UTC)
             )
             if feature_vector is None:
                 raise DeterministicJobError(
@@ -69,7 +72,7 @@ def build_compute_prediction_handler(session_factory):
             baseline = PoissonBaseline()
             over, under = baseline.predict(lambda_home, lambda_away)
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             inputs_json = json.dumps(
                 {
                     "lambda_home": lambda_home,
@@ -101,6 +104,74 @@ def build_compute_prediction_handler(session_factory):
     return compute_prediction
 
 
+def build_resolve_prediction_handler(session_factory):
+    """Resuelve las predicciones de un partido finalizado (US4).
+
+    No muta `Prediction`: crea `PredictionOutcome` por predicción, idempotente
+    por la unicidad de `prediction_id`. Si el partido no está finalizado, es
+    un error transitorio y se reintenta.
+    """
+
+    async def resolve_prediction(payload: dict, _session: AsyncSession) -> None:
+        match_id = payload.get("match_id")
+        if match_id is None:
+            raise DeterministicJobError("Payload inválido: falta 'match_id'")
+
+        async with session_factory() as session:
+            match = (
+                await session.execute(select(Match).where(Match.external_id == match_id))
+            ).scalar_one_or_none()
+            if match is None:
+                raise DeterministicJobError(f"Partido no encontrado: {match_id}")
+
+            if match.status != "finished":
+                raise TransientJobError(
+                    f"Partido sin resultado final aún ({match.status}); reintentar más tarde"
+                )
+
+            predictions = (
+                await session.execute(
+                    select(Prediction).where(Prediction.match_id == match.id)
+                )
+            ).scalars().all()
+            if not predictions:
+                raise DeterministicJobError(f"Sin predicciones para resolver: {match_id}")
+
+            now = datetime.now(UTC)
+            total_goals = (match.home_score or 0) + (match.away_score or 0)
+            persisted = 0
+            for prediction in predictions:
+                existing = (
+                    await session.execute(
+                        select(PredictionOutcome).where(
+                            PredictionOutcome.prediction_id == prediction.id
+                        )
+                    )
+                ).scalar_one_or_none()
+                if existing is not None:
+                    continue  # idempotencia: no duplicar
+                result = resolve_outcome(
+                    prediction.market,
+                    prediction.selection,
+                    match.home_score,
+                    match.away_score,
+                )
+                session.add(
+                    PredictionOutcome(
+                        prediction_id=prediction.id,
+                        result=result,
+                        resolved_at=now,
+                        home_score=match.home_score,
+                        away_score=match.away_score,
+                        total_goals=total_goals,
+                    )
+                )
+                persisted += 1
+            await session.commit()
+
+    return resolve_prediction
+
+
 async def _get_or_create_model_version(session: AsyncSession) -> ModelVersion:
     stmt = select(ModelVersion).where(
         ModelVersion.name == MODEL_NAME,
@@ -113,7 +184,7 @@ async def _get_or_create_model_version(session: AsyncSession) -> ModelVersion:
             version=PoissonBaseline.MODEL_VERSION,
             status="candidate",
             feature_set_version="1.0.0",
-            activated_at=datetime.now(timezone.utc),
+            activated_at=datetime.now(UTC),
         )
         session.add(mv)
         await session.flush()
