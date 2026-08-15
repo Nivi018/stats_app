@@ -185,3 +185,153 @@ export async function fetchOpportunities(filters: OpportunityFilters = {}): Prom
 
   return (await response.json()) as OpportunityDto[];
 }
+
+export type ParlaySelectionRef = {
+  match_id: string;
+  market: string;
+  selection: "over" | "under";
+};
+
+export type ResolvedSelectionDto = {
+  key: string;
+  match_id: string;
+  market: string;
+  selection: "over" | "under";
+  home_team_short: string;
+  away_team_short: string;
+  kickoff_at: string;
+  probability: number;
+  odds: number;
+  fair_odds: number;
+  edge_pp: number;
+  data_quality: string;
+  risk_level: string;
+};
+
+export type ParlayEstimateDto = {
+  selections: ResolvedSelectionDto[];
+  combined_odds: number;
+  naive_probability: number;
+  estimated_probability: number;
+  fair_combined_odds: number | null;
+  risk_level: string;
+  risk_factors: string[];
+  correlation_warnings: string[];
+  assumes_independence: boolean;
+  selection_count: number;
+};
+
+export async function estimateParlay(selections: ParlaySelectionRef[]): Promise<ParlayEstimateDto> {
+  const response = await fetch("/api/v1/parlays/estimate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ selections }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as ErrorDto | null;
+    throw new ApiError(
+      response.status,
+      payload ?? { code: "unknown", message: response.statusText, details: null, correlation_id: "" },
+    );
+  }
+
+  return (await response.json()) as ParlayEstimateDto;
+}
+
+export type ModelVersionDto = {
+  id: string;
+  name: string;
+  version: string;
+  status: string;
+  feature_set_version: string;
+  created_at: string;
+};
+
+export type CalibrationBinDto = {
+  label: string;
+  lower: number;
+  upper: number;
+  n: number;
+  mean_predicted: number | null;
+  observed_rate: number | null;
+};
+
+export type MetricsDto = {
+  model_version_id: string | null;
+  sample_size: number;
+  wins: number;
+  losses: number;
+  voids: number;
+  hit_rate: number | null;
+  unit_roi: number | null;
+  brier: number | null;
+  calibration_bins: CalibrationBinDto[];
+  sample_sufficient: boolean;
+  threshold: number;
+};
+
+export type HistoryItemDto = {
+  prediction_id: string;
+  match_id: string;
+  home_team_short: string;
+  away_team_short: string;
+  kickoff_at: string;
+  market: string;
+  selection: string;
+  probability: number;
+  odds: number | null;
+  model_version: string;
+  prediction_timestamp: string;
+  result: "win" | "loss" | "void";
+  resolved_at: string;
+};
+
+export type HistoryPageDto = {
+  items: HistoryItemDto[];
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+};
+
+export type HistoryFilters = {
+  modelVersion?: string;
+  result?: "win" | "loss" | "void";
+  matchday?: number;
+  page?: number;
+  pageSize?: number;
+};
+
+async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init);
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as ErrorDto | null;
+    throw new ApiError(
+      response.status,
+      payload ?? { code: "unknown", message: response.statusText, details: null, correlation_id: "" },
+    );
+  }
+  return (await response.json()) as T;
+}
+
+export function fetchModelVersions(): Promise<ModelVersionDto[]> {
+  return getJson<ModelVersionDto[]>("/api/v1/model-versions", { next: { revalidate: 60 } });
+}
+
+export function fetchMetrics(modelVersionId?: string): Promise<MetricsDto> {
+  const query = modelVersionId ? `?model_version_id=${encodeURIComponent(modelVersionId)}` : "";
+  return getJson<MetricsDto>(`/api/v1/metrics${query}`, { next: { revalidate: 60 } });
+}
+
+export function fetchHistory(filters: HistoryFilters = {}): Promise<HistoryPageDto> {
+  const params = new URLSearchParams();
+  if (filters.modelVersion != null && filters.modelVersion !== "") params.set("model_version", filters.modelVersion);
+  if (filters.result != null) params.set("result", filters.result);
+  if (filters.matchday != null) params.set("matchday", String(filters.matchday));
+  if (filters.page != null && filters.page > 1) params.set("page", String(filters.page));
+  if (filters.pageSize != null && filters.pageSize !== 20) params.set("page_size", String(filters.pageSize));
+  const query = params.toString();
+  return getJson<HistoryPageDto>(`/api/v1/history${query ? `?${query}` : ""}`, { next: { revalidate: 30 } });
+}

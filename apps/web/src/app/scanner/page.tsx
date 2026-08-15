@@ -67,9 +67,14 @@ export default async function ScannerPage({ searchParams }: { searchParams: Sear
           <p className="text-xs font-bold tracking-[0.2em] text-[var(--accent)]">STATS APP / SCANNER</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">Oportunidades</h1>
         </div>
-        <Link href="/" className="text-sm text-[var(--muted)] underline">
-          Jornada
-        </Link>
+        <div className="flex gap-4 text-sm">
+          <Link href="/parlay" className="text-[var(--muted)] underline">
+            Parlay
+          </Link>
+          <Link href="/" className="text-[var(--muted)] underline">
+            Jornada
+          </Link>
+        </div>
       </header>
 
       {/* Filtros: el estado vive en la URL */}
