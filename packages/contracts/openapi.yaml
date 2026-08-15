@@ -182,6 +182,115 @@ paths:
                 items:
                   $ref: "#/components/schemas/Opportunity"
 
+  /parlays/estimate:
+    post:
+      operationId: estimateParlay
+      summary: Estima cuota combinada, probabilidad y riesgo agregado de un parlay
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParlayEstimateRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParlayEstimate"
+        "422":
+          description: Selección no resoluble (sin predicción o sin cuota)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /model-versions:
+    get:
+      operationId: getModelVersions
+      summary: Lista de versiones de modelo registradas
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModelVersion"
+
+  /metrics:
+    get:
+      operationId: getMetrics
+      summary: Métricas de evaluación (ROI, Brier, acierto y calibración)
+      parameters:
+        - name: model_version_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: threshold
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 30
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Metrics"
+
+  /history:
+    get:
+      operationId: getHistory
+      summary: Historial paginado de predicciones resueltas
+      parameters:
+        - name: model_version
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: result
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [win, loss, void]
+        - name: matchday
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryPage"
+
 components:
   schemas:
     ServiceInfo:
@@ -470,3 +579,217 @@ components:
           type: object
         correlation_id:
           type: string
+
+    ParlaySelectionRef:
+      type: object
+      required: [match_id, selection]
+      properties:
+        match_id:
+          type: string
+        market:
+          type: string
+          default: over_under_2_5
+        selection:
+          type: string
+          enum: [over, under]
+
+    ParlayEstimateRequest:
+      type: object
+      required: [selections]
+      properties:
+        selections:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items:
+            $ref: "#/components/schemas/ParlaySelectionRef"
+
+    ResolvedSelection:
+      type: object
+      required: [key, match_id, market, selection, home_team_short, away_team_short, kickoff_at, probability, odds, fair_odds, edge_pp, data_quality, risk_level]
+      properties:
+        key:
+          type: string
+        match_id:
+          type: string
+        market:
+          type: string
+        selection:
+          type: string
+          enum: [over, under]
+        home_team_short:
+          type: string
+        away_team_short:
+          type: string
+        kickoff_at:
+          type: string
+          format: date-time
+        probability:
+          type: number
+        odds:
+          type: number
+        fair_odds:
+          type: number
+        edge_pp:
+          type: number
+        data_quality:
+          type: string
+        risk_level:
+          type: string
+
+    ParlayEstimate:
+      type: object
+      required: [selections, combined_odds, naive_probability, estimated_probability, risk_level, risk_factors, correlation_warnings, assumes_independence, selection_count]
+      properties:
+        selections:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResolvedSelection"
+        combined_odds:
+          type: number
+        naive_probability:
+          type: number
+        estimated_probability:
+          type: number
+        fair_combined_odds:
+          type: number
+          nullable: true
+        risk_level:
+          type: string
+        risk_factors:
+          type: array
+          items:
+            type: string
+        correlation_warnings:
+          type: array
+          items:
+            type: string
+        assumes_independence:
+          type: boolean
+        selection_count:
+          type: integer
+
+    ModelVersion:
+      type: object
+      required: [id, name, version, status, feature_set_version, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        version:
+          type: string
+        status:
+          type: string
+        feature_set_version:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CalibrationBin:
+      type: object
+      required: [label, lower, upper, n]
+      properties:
+        label:
+          type: string
+        lower:
+          type: number
+        upper:
+          type: number
+        n:
+          type: integer
+        mean_predicted:
+          type: number
+          nullable: true
+        observed_rate:
+          type: number
+          nullable: true
+
+    Metrics:
+      type: object
+      required: [sample_size, wins, losses, voids, calibration_bins, sample_sufficient, threshold]
+      properties:
+        model_version_id:
+          type: string
+          nullable: true
+        sample_size:
+          type: integer
+        wins:
+          type: integer
+        losses:
+          type: integer
+        voids:
+          type: integer
+        hit_rate:
+          type: number
+          nullable: true
+        unit_roi:
+          type: number
+          nullable: true
+        brier:
+          type: number
+          nullable: true
+        calibration_bins:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalibrationBin"
+        sample_sufficient:
+          type: boolean
+        threshold:
+          type: integer
+
+    HistoryItem:
+      type: object
+      required: [prediction_id, match_id, home_team_short, away_team_short, kickoff_at, market, selection, probability, model_version, prediction_timestamp, result, resolved_at]
+      properties:
+        prediction_id:
+          type: string
+          format: uuid
+        match_id:
+          type: string
+        home_team_short:
+          type: string
+        away_team_short:
+          type: string
+        kickoff_at:
+          type: string
+          format: date-time
+        market:
+          type: string
+        selection:
+          type: string
+        probability:
+          type: number
+        odds:
+          type: number
+          nullable: true
+        model_version:
+          type: string
+        prediction_timestamp:
+          type: string
+          format: date-time
+        result:
+          type: string
+          enum: [win, loss, void]
+        resolved_at:
+          type: string
+          format: date-time
+
+    HistoryPage:
+      type: object
+      required: [items, page, page_size, total, total_pages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoryItem"
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
