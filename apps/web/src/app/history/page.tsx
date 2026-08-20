@@ -118,7 +118,11 @@ function MetricsPanel({
       </div>
 
       <h3 className="mt-8 text-sm font-semibold tracking-[0.15em] text-[var(--muted)]">CALIBRACIÓN</h3>
-      <div className="mt-3 overflow-x-auto border border-[var(--rule)]">
+      <div
+        tabIndex={0}
+        aria-label="Tabla de calibración por bin de probabilidad"
+        className="mt-3 overflow-x-auto border border-[var(--rule)]"
+      >
         <table className="w-full min-w-[480px] text-sm">
           <thead>
             <tr className="border-b border-[var(--rule)] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
@@ -152,7 +156,11 @@ function HistoryTable({ page }: { page: HistoryPageDto }) {
   return (
     <section aria-label="Historial de resultados">
       <h2 className="text-sm font-semibold tracking-[0.15em] text-[var(--muted)]">HISTORIAL</h2>
-      <div className="mt-3 overflow-x-auto border border-[var(--rule)]">
+      <div
+        tabIndex={0}
+        aria-label="Tabla del historial de resultados"
+        className="mt-3 overflow-x-auto border border-[var(--rule)]"
+      >
         <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="border-b border-[var(--rule)] text-left text-xs uppercase tracking-wide text-[var(--muted)]">

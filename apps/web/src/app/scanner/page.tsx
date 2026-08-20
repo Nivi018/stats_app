@@ -165,7 +165,7 @@ export default async function ScannerPage({ searchParams }: { searchParams: Sear
 
       {!error && opportunities.length > 0 && (
         <section className="mx-auto mt-10 max-w-6xl">
-          <div className="overflow-x-auto border-t border-[var(--rule)]">
+          <div tabIndex={0} aria-label="Tabla de oportunidades" className="overflow-x-auto border-t border-[var(--rule)]">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-[var(--rule)] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
