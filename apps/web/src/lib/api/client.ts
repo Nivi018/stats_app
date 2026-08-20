@@ -1,5 +1,16 @@
 // Cliente tipado del API v1. Espeja el OpenAPI canónico en packages/contracts.
 
+// En SSR, fetch exige URL absoluta; en el navegador la relativa pasa por el
+// rewrite de Next (/api/v1/*). STATS_API_URL es la misma variable del rewrite.
+const SSR_API_BASE = (process.env.STATS_API_URL ?? "http://localhost:8000").replace(/\/+$/, "");
+
+function apiUrl(path: string): string {
+  if (typeof window === "undefined") {
+    return `${SSR_API_BASE}${path}`;
+  }
+  return path;
+}
+
 export type Team = {
   id: string;
   name: string;
@@ -41,8 +52,27 @@ export class ApiError extends Error {
   }
 }
 
+// Devuelve el correlation_id del error (para soporte) o null si no es de API.
+export function errorCorrelationId(e: unknown): string | null {
+  if (e instanceof ApiError && e.payload.correlation_id) {
+    return e.payload.correlation_id;
+  }
+  return null;
+}
+
+// Formateo defensivo: cifras inválidas no se muestran (US4).
+export function safeFixed(value: number | null | undefined, digits: number): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  return value.toFixed(digits);
+}
+
+export function safePct(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value) || value < 0 || value > 1) return "—";
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 export async function fetchMatchday(): Promise<MatchdayDto> {
-  const response = await fetch("/api/v1/matchdays/current", {
+  const response = await fetch(apiUrl("/api/v1/matchdays/current"), {
     next: { revalidate: 60 },
   });
 
@@ -146,7 +176,7 @@ export type OddsDto = {
 };
 
 export async function fetchMatchDetail(matchId: string): Promise<MatchDetailDto> {
-  const response = await fetch(`/api/v1/matches/${encodeURIComponent(matchId)}`, {
+  const response = await fetch(apiUrl(`/api/v1/matches/${encodeURIComponent(matchId)}`), {
     next: { revalidate: 60 },
   });
 
@@ -171,7 +201,7 @@ export async function fetchOpportunities(filters: OpportunityFilters = {}): Prom
   const query = params.toString();
   const url = `/api/v1/opportunities${query ? `?${query}` : ""}`;
 
-  const response = await fetch(url, {
+  const response = await fetch(apiUrl(url), {
     next: { revalidate: 60 },
   });
 
@@ -222,7 +252,7 @@ export type ParlayEstimateDto = {
 };
 
 export async function estimateParlay(selections: ParlaySelectionRef[]): Promise<ParlayEstimateDto> {
-  const response = await fetch("/api/v1/parlays/estimate", {
+  const response = await fetch(apiUrl("/api/v1/parlays/estimate"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ selections }),
@@ -305,7 +335,7 @@ export type HistoryFilters = {
 };
 
 async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
+  const response = await fetch(apiUrl(url), init);
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as ErrorDto | null;
     throw new ApiError(

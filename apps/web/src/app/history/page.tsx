@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ErrorAlert } from "@/components/error-alert";
 import {
+  errorCorrelationId,
   fetchHistory,
   fetchMetrics,
   fetchModelVersions,
@@ -209,6 +211,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
   let metrics: MetricsDto | null = null;
   let history: HistoryPageDto | null = null;
   let error: string | null = null;
+  let correlationId: string | null = null;
 
   try {
     versions = await fetchModelVersions();
@@ -222,6 +225,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
     });
   } catch (e) {
     error = e instanceof Error ? e.message : "No se pudo contactar la API";
+    correlationId = errorCorrelationId(e);
   }
 
   const selected = versions.find((v) => v.id === versionId);
@@ -258,13 +262,18 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
 
       <section className="mx-auto mt-8 max-w-6xl">
         {error ? (
-          <div role="alert" className="border border-red-300 bg-red-50 p-5 text-sm text-red-800">
-            <p className="font-semibold">No se pudieron cargar las métricas</p>
-            <p className="mt-1">{error}</p>
-            <p className="mt-2 text-xs">
-              Ejecuta <code>npm run dev:api</code> y el runner demo de resolución (
-              <code>python -m app.jobs.run_resolution</code>) para poblar resultados.
-            </p>
+          <div className="mt-8">
+            <ErrorAlert
+              title="No se pudieron cargar las métricas"
+              message={error}
+              correlationId={correlationId}
+              hint={
+                <>
+                  Ejecuta <code>npm run dev:api</code> y el runner demo de resolución (
+                  <code>python -m app.jobs.run_resolution</code>) para poblar resultados.
+                </>
+              }
+            />
           </div>
         ) : (
           <>

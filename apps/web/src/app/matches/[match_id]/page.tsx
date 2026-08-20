@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { fetchMatchDetail, type PredictionDto, type TeamMatchStatsDto } from "@/lib/api/client";
+import { ErrorAlert } from "@/components/error-alert";
+import { errorCorrelationId, fetchMatchDetail, type PredictionDto, type TeamMatchStatsDto } from "@/lib/api/client";
 
 export const dynamic = "force-dynamic";
 
@@ -182,23 +183,28 @@ export default async function MatchDetailPage({ params }: Props) {
 
   let detail;
   let error: string | null = null;
+  let correlationId: string | null = null;
   try {
     detail = await fetchMatchDetail(match_id);
   } catch (e) {
     error = e instanceof Error ? e.message : "No se pudo contactar la API";
+    correlationId = errorCorrelationId(e);
   }
 
   if (error) {
     return (
       <main className="min-h-screen bg-[var(--background)] px-5 py-6 text-[var(--foreground)] md:px-10 md:py-10">
-        <div role="alert" className="mx-auto mt-8 max-w-3xl border border-red-300 bg-red-50 p-5 text-sm text-red-800">
-          <p className="font-semibold">No se pudo cargar el partido</p>
-          <p className="mt-1">{error}</p>
-          <p className="mt-3">
-            <Link href="/scanner" className="underline">
-              Volver al scanner
-            </Link>
-          </p>
+        <div className="mx-auto mt-8 max-w-3xl">
+          <ErrorAlert
+            title="No se pudo cargar el partido"
+            message={error}
+            correlationId={correlationId}
+            hint={
+              <Link href="/scanner" className="underline">
+                Volver al scanner
+              </Link>
+            }
+          />
         </div>
       </main>
     );

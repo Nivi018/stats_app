@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { fetchOpportunities, type OpportunityDto, type OpportunityFilters } from "@/lib/api/client";
+import { ErrorAlert } from "@/components/error-alert";
+import { errorCorrelationId, fetchOpportunities, type OpportunityDto, type OpportunityFilters } from "@/lib/api/client";
 
 export const dynamic = "force-dynamic";
 
@@ -49,11 +50,13 @@ export default async function ScannerPage({ searchParams }: { searchParams: Sear
 
   let opportunities: OpportunityDto[] = [];
   let error: string | null = null;
+  let correlationId: string | null = null;
 
   try {
     opportunities = await fetchOpportunities(filters);
   } catch (e) {
     error = e instanceof Error ? e.message : "No se pudo contactar la API";
+    correlationId = errorCorrelationId(e);
   }
 
   const currentSort = filters.sort ?? "edge";
@@ -131,13 +134,18 @@ export default async function ScannerPage({ searchParams }: { searchParams: Sear
       </section>
 
       {error && (
-        <div role="alert" className="mx-auto mt-8 max-w-6xl border border-red-300 bg-red-50 p-5 text-sm text-red-800">
-          <p className="font-semibold">No se pudieron cargar las oportunidades</p>
-          <p className="mt-1">{error}</p>
-          <p className="mt-2 text-xs">
-            Ejecuta <code>npm run dev:api</code> y el worker de predicciones (
-            <code>compute_prediction</code>) para ver señales.
-          </p>
+        <div className="mx-auto mt-8 max-w-6xl">
+          <ErrorAlert
+            title="No se pudieron cargar las oportunidades"
+            message={error}
+            correlationId={correlationId}
+            hint={
+              <>
+                Ejecuta <code>npm run dev:api</code> y el worker de predicciones (
+                <code>compute_prediction</code>) para ver señales.
+              </>
+            }
+          />
         </div>
       )}
 

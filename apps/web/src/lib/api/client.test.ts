@@ -1,5 +1,13 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { ApiError, fetchMatchday, fetchMatchDetail, fetchOpportunities } from "@/lib/api/client";
+import {
+  ApiError,
+  errorCorrelationId,
+  fetchMatchday,
+  fetchMatchDetail,
+  fetchOpportunities,
+  safeFixed,
+  safePct,
+} from "@/lib/api/client";
 
 const matchdayFixture = {
   matchday: 1,
@@ -196,8 +204,32 @@ describe("fetchMatchDetail", () => {
 
     const result = await fetchMatchDetail("match-up-01");
 
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/matches/match-up-01");
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/v1/matches/match-up-01");
     expect(result.predictions).toHaveLength(1);
     expect(result.predictions[0].probability).toBe(0.6);
+  });
+});
+
+describe("US4 helpers", () => {
+  it("exposes the correlation_id of an ApiError for support", () => {
+    const error = new ApiError(500, {
+      code: "internal_error",
+      message: "boom",
+      details: null,
+      correlation_id: "corr-for-support",
+    });
+    expect(errorCorrelationId(error)).toBe("corr-for-support");
+    expect(errorCorrelationId(new Error("otro"))).toBeNull();
+    expect(errorCorrelationId(null)).toBeNull();
+  });
+
+  it("does not render invalid figures (cifras inválidas)", () => {
+    expect(safePct(null)).toBe("—");
+    expect(safePct(undefined)).toBe("—");
+    expect(safePct(Number.NaN)).toBe("—");
+    expect(safePct(1.5)).toBe("—");
+    expect(safePct(0.6)).toBe("60.0%");
+    expect(safeFixed(Number.POSITIVE_INFINITY, 2)).toBe("—");
+    expect(safeFixed(1.85, 2)).toBe("1.85");
   });
 });

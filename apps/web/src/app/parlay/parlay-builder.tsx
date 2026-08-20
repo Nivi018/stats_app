@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  errorCorrelationId,
   estimateParlay,
+  safeFixed,
+  safePct,
   type OpportunityDto,
   type ParlayEstimateDto,
   type ResolvedSelectionDto,
@@ -28,7 +31,7 @@ import {
 type EstimateState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "error"; message: string }
+  | { status: "error"; message: string; correlationId?: string | null }
   | { status: "ready"; estimate: ParlayEstimateDto };
 
 function marketLabel(selection: string): string {
@@ -89,6 +92,7 @@ export default function ParlayBuilder({
         setEstimateState({
           status: "error",
           message: e instanceof Error ? e.message : "No se pudo estimar el parlay",
+          correlationId: errorCorrelationId(e),
         });
       });
     return () => {
@@ -260,9 +264,17 @@ export default function ParlayBuilder({
               ) : estimateState.status === "loading" ? (
                 <p className="text-sm text-[var(--muted)]">Estimando…</p>
               ) : estimateState.status === "error" ? (
-                <p role="alert" className="text-sm text-red-800">
-                  {estimateState.message}
-                </p>
+                <div role="alert" className="text-sm text-red-800">
+                  <p>{estimateState.message}</p>
+                  {estimateState.correlationId && (
+                    <p className="mt-2 text-xs">
+                      ID de correlación para soporte:{" "}
+                      <code className="break-all" title={estimateState.correlationId}>
+                        {estimateState.correlationId}
+                      </code>
+                    </p>
+                  )}
+                </div>
               ) : estimateState.status === "ready" ? (
                 <EstimatePanel estimate={estimateState.estimate} />
               ) : null}
@@ -281,18 +293,18 @@ function EstimatePanel({ estimate }: { estimate: ParlayEstimateDto }) {
       <dl className="space-y-2 text-sm">
         <div className="flex justify-between">
           <dt className="text-[var(--muted)]">Cuota combinada</dt>
-          <dd className="font-semibold tabular-nums">{estimate.combined_odds.toFixed(2)}</dd>
+          <dd className="font-semibold tabular-nums">{safeFixed(estimate.combined_odds, 2)}</dd>
         </div>
         <div className="flex justify-between">
           <dt className="text-[var(--muted)]">Prob. estimada</dt>
           <dd className="font-medium tabular-nums">
-            {viable ? pct(estimate.estimated_probability) : "No viable"}
+            {viable ? safePct(estimate.estimated_probability) : "No viable"}
           </dd>
         </div>
         {estimate.fair_combined_odds != null && (
           <div className="flex justify-between">
             <dt className="text-[var(--muted)]">Cuota justa</dt>
-            <dd className="font-medium tabular-nums">{estimate.fair_combined_odds.toFixed(2)}</dd>
+            <dd className="font-medium tabular-nums">{safeFixed(estimate.fair_combined_odds, 2)}</dd>
           </div>
         )}
         <div className="flex justify-between">

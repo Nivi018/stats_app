@@ -1,4 +1,5 @@
-import { fetchMatchday, type MatchDto } from "@/lib/api/client";
+import { ErrorAlert } from "@/components/error-alert";
+import { errorCorrelationId, fetchMatchday, type MatchDto } from "@/lib/api/client";
 
 export const dynamic = "force-dynamic";
 
@@ -32,11 +33,13 @@ function OddsBadge({ match }: { match: MatchDto }) {
 export default async function Home() {
   let matchday;
   let error: string | null = null;
+  let correlationId: string | null = null;
 
   try {
     matchday = await fetchMatchday();
   } catch (e) {
     error = e instanceof Error ? e.message : "No se pudo contactar la API";
+    correlationId = errorCorrelationId(e);
   }
 
   return (
@@ -82,17 +85,18 @@ export default async function Home() {
           </p>
 
           {error && (
-            <div
-              role="alert"
-              className="mt-8 border border-red-300 bg-red-50 p-5 text-sm text-red-800"
-            >
-              <p className="font-semibold">No se pudo cargar la jornada</p>
-              <p className="mt-1">{error}</p>
-              <p className="mt-2 text-xs">
-                Verifica que el API esté corriendo (<code>npm run dev:api</code>) o el estado
-                de PostgreSQL/Redis (<code>npm run infra:up</code>).
-              </p>
-            </div>
+            <ErrorAlert
+              className="mt-8"
+              title="No se pudo cargar la jornada"
+              message={error}
+              correlationId={correlationId}
+              hint={
+                <>
+                  Verifica que el API esté corriendo (<code>npm run dev:api</code>) o el estado de
+                  PostgreSQL/Redis (<code>npm run infra:up</code>).
+                </>
+              }
+            />
           )}
 
           {!error && matchday && isStale(matchday.updated_at) && (
