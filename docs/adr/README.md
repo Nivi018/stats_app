@@ -12,3 +12,4 @@ This directory contains architectural decisions for the Stats App project.
 | 004 | Process ingestion and predictions via idempotent worker | Accepted |
 | 005 | Deploy with coordinated version and expand-contract migrations | Accepted |
 | 006 | Deterministic walk-forward backtesting and promotion policy | Accepted |
+| 007 | Provider spike and go/no-go decision (API-Football for post-MVP) | Accepted |
