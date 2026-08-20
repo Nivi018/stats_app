@@ -1,14 +1,17 @@
-import os
+"""Punto de entrada del worker.
+
+Depende de `stats-api` (paquete `app`), que contiene el dominio, la cola y los
+handlers. Ejecuta el bucle de consumo con observabilidad (US7).
+"""
+
+import asyncio
 import signal
 import sys
-import time
 from typing import NoReturn
-
-from app.settings import settings
 
 
 def handle_shutdown(signum: int, frame: object) -> None:
-    print(f"[worker] Received signal {signum}, shutting down...")
+    print(f"[worker] Received signal {signum}, shutting down...", flush=True)
     sys.exit(0)
 
 
@@ -16,14 +19,9 @@ def main() -> NoReturn:
     signal.signal(signal.SIGTERM, handle_shutdown)
     signal.signal(signal.SIGINT, handle_shutdown)
 
-    print(f"[worker] Starting stats-worker v{settings.VERSION}")
-    print(f"[worker] Redis: {settings.REDIS_HOST}:{settings.REDIS_PORT}")
+    from app.jobs.worker import run
 
-    try:
-        while True:
-            time.sleep(5)
-    except KeyboardInterrupt:
-        print("[worker] Interrupted, exiting.")
+    asyncio.run(run())
 
 
 if __name__ == "__main__":

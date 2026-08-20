@@ -19,6 +19,7 @@ class JobEnvelope:
     attempt: int = 1
     max_attempts: int = 3
     payload: dict[str, Any] = field(default_factory=dict)
+    correlation_id: str | None = None
 
     def to_json(self) -> str:
         import json

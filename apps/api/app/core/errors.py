@@ -9,6 +9,7 @@ import uuid
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.core.logging import set_correlation_id
 from app.domain.providers import InvalidProviderPayload
 from app.schemas.matchday import ErrorDto
 
@@ -37,6 +38,7 @@ def setup_error_handlers(app: FastAPI) -> None:
     async def correlation_middleware(request: Request, call_next):
         correlation_id = request.headers.get(CORRELATION_HEADER) or str(uuid.uuid4())
         request.state.correlation_id = correlation_id
+        set_correlation_id(correlation_id)
         response = await call_next(request)
         response.headers[CORRELATION_HEADER] = correlation_id
         return response

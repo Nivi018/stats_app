@@ -40,6 +40,16 @@ class QueueBroker:
             return None
         return JobEnvelope.from_json(raw)
 
+    async def peek(self) -> JobEnvelope | None:
+        """Devuelve el trabajo al frente sin retirarlo (para logging/contexto)."""
+        raw = await self._r.lindex(self.work_key, 0)
+        if raw is None:
+            return None
+        return JobEnvelope.from_json(raw)
+
+    async def retry_count(self) -> int:
+        return int(await self._r.zcard(self.retry_key))
+
     async def move_due(self, now: float | None = None) -> int:
         """Mueve trabajos reintentables vencidos desde el zset a la cola de trabajo."""
         now = now or time.time()
