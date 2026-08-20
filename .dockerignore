@@ -1,0 +1,11 @@
+# Contexto de build Docker: excluir artefactos locales.
+**/node_modules
+**/.next
+**/.venv
+**/__pycache__
+*.py[cod]
+**/.pytest_cache
+**/test-results
+**/playwright-report
+.git
+reports

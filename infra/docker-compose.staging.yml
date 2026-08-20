@@ -1,0 +1,106 @@
+# Despliegue coordinado de staging (US8).
+#
+# Uso (desde la raíz):
+#   docker build -f apps/api/Dockerfile    -t stats-api:latest .
+#   docker build -f apps/worker/Dockerfile -t stats-worker:latest .
+#   docker build -f apps/web/Dockerfile --build-arg STATS_API_URL=http://api:8000 -t stats-web:latest .
+#   docker compose -f infra/docker-compose.staging.yml up --build --abort-on-container-exit
+#
+# El servicio `smoke` ejecuta las pruebas de humo tras el arranque y finaliza.
+name: stats-staging
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: stats
+      POSTGRES_PASSWORD: stats
+      POSTGRES_DB: stats_app
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stats -d stats_app"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    image: stats-api:latest
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+    environment: &db-env
+      STATS_POSTGRES_HOST: postgres
+      STATS_POSTGRES_PORT: "5432"
+      STATS_REDIS_HOST: redis
+      STATS_ENV: staging
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
+    image: stats-api:latest
+    command: ["python", "-m", "app.seeds.run"]
+    environment: *db-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  api:
+    image: stats-api:latest
+    environment: *db-env
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready').status==200 else 1)"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    image: stats-worker:latest
+    environment: *db-env
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+      api:
+        condition: service_started
+
+  web:
+    image: stats-web:latest
+    environment:
+      STATS_API_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  smoke:
+    image: stats-api:latest
+    entrypoint: ["/bin/bash", "/smoke/smoke.sh"]
+    environment:
+      STATS_API_URL: http://api:8000
+      STATS_WEB_URL: http://web:3000
+    volumes:
+      - ./smoke:/smoke:ro
+    depends_on:
+      web:
+        condition: service_started
+      api:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  postgres_data:
