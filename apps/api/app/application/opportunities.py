@@ -7,9 +7,9 @@ señales. No recalcula el modelo en cada request.
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from collections import defaultdict
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.domain.odds import edge_pp, expected_value
@@ -69,29 +69,46 @@ class OpportunityService:
                 )
             ).all()
 
+            match_ids = [m.id for m, _, _ in matches]
+
+            # Cargas por lote: predicciones y snapshots en 2 consultas (sin N+1).
+            preds = (
+                await session.execute(
+                    select(Prediction)
+                    .where(Prediction.match_id.in_(match_ids))
+                    .order_by(Prediction.prediction_timestamp.desc())
+                )
+            ).scalars().all()
+            preds_by_match: dict = defaultdict(list)
+            for pred in preds:
+                preds_by_match[pred.match_id].append(pred)
+
+            snap_rows = (
+                await session.execute(
+                    select(OddsSnapshot).where(OddsSnapshot.match_id.in_(match_ids))
+                )
+            ).scalars().all()
+            snaps_by_match: dict = defaultdict(list)
+            for row in snap_rows:
+                snaps_by_match[row.match_id].append(Snapshot.from_model(row))
+
             opportunities: list[Opportunity] = []
             for match, home_team, away_team in matches:
                 if matchday is not None and match.matchday != matchday:
                     continue
 
-                preds = (
-                    await session.execute(
-                        select(Prediction)
-                        .where(Prediction.match_id == match.id)
-                        .order_by(Prediction.prediction_timestamp.desc())
-                    )
-                ).scalars().all()
-                if not preds:
+                match_preds = preds_by_match.get(match.id, [])
+                if not match_preds:
                     continue
 
-                odds = await self._match_snapshots(session, match.id)
+                odds = snaps_by_match.get(match.id, [])
                 pair = de_vig_pair(odds, at)
                 if pair is None:
                     continue
                 market_no_vig = dict(zip(("over", "under"), pair.no_vig_probabilities))
 
                 latest_by_selection: dict[str, Prediction] = {}
-                for pred in preds:
+                for pred in match_preds:
                     latest_by_selection.setdefault(pred.selection, pred)
 
                 for selection, pred in latest_by_selection.items():
@@ -148,11 +165,3 @@ class OpportunityService:
         else:  # edge (default)
             key = lambda o: (not o.is_signal, -o.edge_pp, o.match_id)
         return sorted(opportunities, key=key)
-
-    async def _match_snapshots(self, session: AsyncSession, match_id) -> list[Snapshot]:
-        rows = (
-            await session.execute(
-                select(OddsSnapshot).where(OddsSnapshot.match_id == match_id)
-            )
-        ).scalars().all()
-        return [Snapshot.from_model(r) for r in rows]

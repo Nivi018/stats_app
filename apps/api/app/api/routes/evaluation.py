@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, Query, Request
 
 from app.application.metrics import MetricsService
+from app.db.session import async_session
 from app.schemas.evaluation import (
     CalibrationBinDto,
     HistoryItemDto,
@@ -16,7 +17,7 @@ router = APIRouter()
 
 def get_metrics_service(request: Request) -> MetricsService:
     factory = getattr(request.app.state, "session_factory", None)
-    return MetricsService(factory)
+    return MetricsService(factory or async_session)
 
 
 @router.get("/model-versions", response_model=list[ModelVersionDto])

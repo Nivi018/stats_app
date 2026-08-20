@@ -106,16 +106,38 @@ class DemoOddsProvider:
                 .order_by(OddsSnapshot.observed_at)
             )
             return [
-                DomainOddsSnapshot(
-                    match_id=match_id,
-                    market=snapshot.market,
-                    selection=snapshot.selection,
-                    decimal_odds=snapshot.odds,
-                    captured_at=snapshot.observed_at,
-                    provider=snapshot.provider,
-                )
+                self._to_domain(match_id, snapshot)
                 for snapshot in result.scalars().all()
             ]
+
+    async def get_odds_snapshots_for_matches(self, match_ids: list[str]) -> dict[str, list[DomainOddsSnapshot]]:
+        """Carga los snapshots de varios partidos en una sola consulta (evita N+1)."""
+        if not match_ids:
+            return {}
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(Match, OddsSnapshot)
+                .join(OddsSnapshot, OddsSnapshot.match_id == Match.id)
+                .where(Match.external_id.in_(match_ids))
+                .order_by(OddsSnapshot.observed_at)
+            )
+            grouped: dict[str, list[DomainOddsSnapshot]] = {}
+            for match, snapshot in result.all():
+                grouped.setdefault(match.external_id, []).append(
+                    self._to_domain(match.external_id, snapshot)
+                )
+            return grouped
+
+    @staticmethod
+    def _to_domain(match_id: str, snapshot) -> DomainOddsSnapshot:
+        return DomainOddsSnapshot(
+            match_id=match_id,
+            market=snapshot.market,
+            selection=snapshot.selection,
+            decimal_odds=snapshot.odds,
+            captured_at=snapshot.observed_at,
+            provider=snapshot.provider,
+        )
 
 
 class OddsSnapshotMapper:

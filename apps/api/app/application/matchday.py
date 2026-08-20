@@ -28,6 +28,20 @@ class MatchdayService:
     async def get_current_matchday(self) -> list[DomainMatch]:
         return await self._sports.get_upcoming_matches()
 
+    async def get_current_matchday_with_odds(
+        self,
+    ) -> list[tuple[DomainMatch, DomainOddsSnapshot | None, DomainOddsSnapshot | None]]:
+        """Jornada con cuotas Over/Under en 2 consultas (sin N+1)."""
+        matches = await self._sports.get_upcoming_matches()
+        grouped = await self._odds.get_odds_snapshots_for_matches([m.id for m in matches])
+        result: list[tuple[DomainMatch, DomainOddsSnapshot | None, DomainOddsSnapshot | None]] = []
+        for match in matches:
+            odds = grouped.get(match.id, [])
+            over = next((o for o in odds if o.selection == "over"), None)
+            under = next((o for o in odds if o.selection == "under"), None)
+            result.append((match, over, under))
+        return result
+
     async def get_match(self, match_id: str) -> DomainMatch | None:
         return await self._sports.get_match(match_id)
 

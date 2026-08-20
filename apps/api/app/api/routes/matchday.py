@@ -1,20 +1,20 @@
 """Endpoints de jornada y partido bajo `/api/v1`."""
 
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.matchday import MatchdayService
 from app.application.opportunities import OpportunityService
 from app.core.errors import error_response
+from app.db.session import async_session
 from app.explanation.builder import build_explanation
 from app.models import Prediction
 from app.schemas.matchday import (
-    MatchDetailDto,
     MatchdayDto,
+    MatchDetailDto,
     OddsDto,
     OpportunityDto,
     PredictionDto,
@@ -26,14 +26,16 @@ router = APIRouter()
 
 def get_matchday_service(request: Request) -> MatchdayService:
     factory: Callable[[], AsyncSession] | None = getattr(request.app.state, "session_factory", None)
-    return MatchdayService(session_factory=factory)
+    return MatchdayService(session_factory=factory or async_session)
 
 
 def _to_team_dto(team) -> dict:
     return {"id": team.id, "name": team.name, "short_name": team.short_name}
 
 
-def _build_match_dto(match, over_odds: float | None = None, under_odds: float | None = None) -> dict:
+def _build_match_dto(
+    match, over_odds: float | None = None, under_odds: float | None = None
+) -> dict:
     return {
         "id": match.id,
         "competition": match.competition,
@@ -74,15 +76,19 @@ async def get_current_matchday(
     matchday: int = Query(1, ge=1, description="Número de jornada"),
     service: MatchdayService = Depends(get_matchday_service),
 ):
-    matches = await service.get_current_matchday()
+    rows = await service.get_current_matchday_with_odds()
     result = []
-    for match in matches:
-        odds = await service.get_match_odds(match.id)
-        over, under = _odds_selection(odds)
-        result.append(_build_match_dto(match, over, under))
+    for match, over, under in rows:
+        result.append(
+            _build_match_dto(
+                match,
+                over.decimal_odds if over else None,
+                under.decimal_odds if under else None,
+            )
+        )
     return MatchdayDto(
         matchday=matchday,
-        updated_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(UTC),
         total_matches=len(result),
         matches=result,
     )
@@ -132,19 +138,25 @@ async def get_prediction(
 ):
     prediction = await service.get_prediction(prediction_id)
     if prediction is None:
-        return error_response(404, "not_found", f"Predicción no encontrada: {prediction_id}", request)
+        return error_response(
+            404, "not_found", f"Predicción no encontrada: {prediction_id}", request
+        )
     return _to_prediction_dto(prediction)
 
 
 def get_opportunity_service(request: Request) -> OpportunityService:
     factory = getattr(request.app.state, "session_factory", None)
-    return OpportunityService(factory)
+    return OpportunityService(factory or async_session)
 
 
 @router.get("/opportunities", response_model=list[OpportunityDto])
 async def get_opportunities(
     min_edge: float = Query(0, ge=-100, le=100, description="Edge mínimo en puntos porcentuales"),
-    risk: str | None = Query(None, pattern="^(low|medium|high)$", description="Filtrar por nivel de riesgo"),
+    risk: str | None = Query(
+        None,
+        pattern="^(low|medium|high)$",
+        description="Filtrar por nivel de riesgo",
+    ),
     matchday: int | None = Query(None, ge=1, description="Filtrar por jornada"),
     sort: str = Query("edge", pattern="^(edge|ev|probability)$", description="Orden"),
     service: OpportunityService = Depends(get_opportunity_service),

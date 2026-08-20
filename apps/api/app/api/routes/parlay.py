@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Request
 
 from app.application.parlay import ParlayService, SelectionUnresolvable
 from app.core.errors import error_response
+from app.db.session import async_session
 from app.schemas.parlay import (
     ParlayEstimateDto,
     ParlayEstimateRequest,
@@ -15,7 +16,7 @@ router = APIRouter()
 
 def get_parlay_service(request: Request) -> ParlayService:
     factory = getattr(request.app.state, "session_factory", None)
-    return ParlayService(factory)
+    return ParlayService(factory or async_session)
 
 
 @router.post("/parlays/estimate", response_model=ParlayEstimateDto)

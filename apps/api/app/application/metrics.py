@@ -42,9 +42,32 @@ class MetricsService:
                 stmt = stmt.where(Prediction.model_version_id == model_version_id)
             rows = (await session.execute(stmt)).all()
 
+            # Cuotas observadas por lote para evitar N+1.
+            match_ids = list({p.match_id for p, _ in rows})
+            odds_by_key: dict[tuple, float] = {}
+            if match_ids:
+                snap_rows = (
+                    await session.execute(
+                        select(OddsSnapshot).where(OddsSnapshot.match_id.in_(match_ids))
+                    )
+                ).scalars().all()
+                best: dict[tuple, tuple[datetime, float]] = {}
+                for snapshot in snap_rows:
+                    key = (snapshot.match_id, snapshot.market, snapshot.selection)
+                    observed = snapshot.observed_at
+                    if observed.tzinfo is None:
+                        observed = observed.replace(tzinfo=UTC)
+                    current = best.get(key)
+                    if current is None or observed > current[0]:
+                        best[key] = (observed, snapshot.odds)
+                odds_by_key = {key: value for key, (_, value) in best.items()}
+
             records: list[ResolvedPrediction] = []
             for prediction, outcome in rows:
-                odds = await self._observed_odds(session, prediction, outcome)
+                odds = odds_by_key.get(
+                    (prediction.match_id, prediction.market, prediction.selection),
+                    prediction.fair_odds,
+                )
                 records.append(
                     ResolvedPrediction(
                         probability=prediction.probability,
@@ -57,20 +80,3 @@ class MetricsService:
             model_version_id=model_version_id,
             threshold=threshold,
         )
-
-    async def _observed_odds(self, session, prediction, outcome) -> float | None:
-        """Cuota vigente más cercana a la predicción; fallback a cuota justa."""
-        snapshot = (
-            await session.execute(
-                select(OddsSnapshot)
-                .where(
-                    OddsSnapshot.match_id == prediction.match_id,
-                    OddsSnapshot.market == prediction.market,
-                    OddsSnapshot.selection == prediction.selection,
-                )
-                .order_by(OddsSnapshot.observed_at.desc())
-            )
-        ).scalars().first()
-        if snapshot is not None:
-            return snapshot.odds
-        return prediction.fair_odds
