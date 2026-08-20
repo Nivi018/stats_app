@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Permite E2E/Playwright vía 127.0.0.1 en dev (Next bloquea dev resources cross-origin).
+  allowedDevOrigins: ["127.0.0.1"],
   async rewrites() {
     return [
       {

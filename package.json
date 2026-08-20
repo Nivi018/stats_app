@@ -9,7 +9,7 @@
     "dev": "concurrently -n web,api,worker -c cyan,green,yellow \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:worker\"",
     "dev:web": "turbo dev",
     "dev:api": "cd apps\\api && .venv\\Scripts\\uvicorn app.main:app --reload --port 8000",
-    "dev:worker": "cd apps\\worker && .venv\\Scripts\\python -m app.main",
+    "dev:worker": "cd apps\\api && .venv\\Scripts\\python -m app.jobs.worker",
     "db:migrate": "cd apps\\api && .venv\\Scripts\\python -m alembic upgrade head",
     "db:seed": "cd apps\\api && .venv\\Scripts\\python -m app.seeds.run",
     "build": "turbo build",
