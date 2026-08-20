@@ -6,14 +6,15 @@ Monorepo para análisis estadístico de fútbol — Liga MX, Over/Under 2.5 prep
 
 ```
 apps/
-  web/       # Next.js — UI, rutas y cliente API
+  web/       # Next.js — UI, rutas, cliente API y E2E (Playwright)
   api/       # FastAPI — dominio, persistencia y endpoints
-  worker/    # Consumidor de cola — ingesta y cálculo asíncrono
+  worker/    # Consumidor de cola (ejecuta app.jobs.worker de stats-api)
 packages/
   contracts/ # Especificación OpenAPI y tipos compartidos
   config/    # Configuración de tooling
-infra/       # Docker Compose y configuración de despliegue
+infra/       # Docker Compose (dev y staging) y smoke test
 docs/adr/    # Decisiones arquitectónicas
+docs/runbooks/# Runbooks operativos (release y rollback)
 ```
 
 ## Requisitos
@@ -35,71 +36,130 @@ docker compose -f infra/docker-compose.yml up -d
 python -m venv apps/api/.venv
 apps/api/.venv/Scripts/pip install -e "apps/api[dev]"
 python -m venv apps/worker/.venv
-apps/worker/.venv/Scripts/pip install -e "apps/worker[dev]"
+apps/worker/.venv/Scripts/pip install -e "apps/api[dev]"   # el worker usa el paquete stats-api
+
+# Migrar y sembrar
+npm run db:migrate
+npm run db:seed
+
+# Calcular y resolver predicciones demo (puebla scanner, parlay, historial y métricas)
+apps/api/.venv/Scripts/python -m app.jobs.run_resolution
 ```
 
 ## Comandos
 
 | Comando | Descripción |
 |---------|-------------|
-| `npm run dev` | Inicia todos los procesos en modo desarrollo |
+| `npm run dev` | Inicia web, API y worker en modo desarrollo |
+| `npm run dev:web` | Solo web (Next.js) |
+| `npm run dev:api` | Solo API (uvicorn, puerto 8000) |
+| `npm run dev:worker` | Solo worker (consume la cola, puerto Redis) |
 | `npm run build` | Compila todas las aplicaciones |
-| `npm run lint` | Ejecuta lint en todas las unidades |
-| `npm test` | Ejecuta todas las pruebas |
-| `npm test -w @stats/web` | Solo pruebas del frontend |
-| `npm run build -w @stats/web` | Solo build del frontend |
+| `npm run lint` | Lint de todas las unidades |
+| `npm test` | Tests unitarios de todas las unidades |
+| `npm test -w @stats/web` | Tests de vitest del frontend |
+| `npm run test:e2e -w @stats/web` | E2E Playwright (stack integrado) |
+| `npm run db:migrate` | `alembic upgrade head` |
+| `npm run db:seed` | Carga el seed demo |
+| `npm run infra:up` | Levanta PostgreSQL y Redis (dev) |
 
 ### Por unidad
 
 ```bash
-# Web (Next.js)
+# Web
 npm run dev -w @stats/web
 npm test -w @stats/web
 npm run lint -w @stats/web
+npm run test:e2e -w @stats/web   # requiere API + PostgreSQL + Redis
 
-# API (FastAPI)
+# API
 apps/api/.venv/Scripts/uvicorn app.main:app --reload --port 8000
 apps/api/.venv/Scripts/python -m pytest apps/api/tests -v
 
 # Worker
-apps/worker/.venv/Scripts/python -m app.main
+apps/api/.venv/Scripts/python -m app.jobs.worker
 ```
 
 ## Variables de entorno
 
-Copiar `.env.example` a `.env` y ajustar según entorno. Las variables usan el prefijo `STATS_`.
+Copiar `.env.example` a `.env` y ajustar según entorno. Prefijo `STATS_`.
 
 | Variable | Default | Descripción |
 |----------|---------|-------------|
 | `STATS_POSTGRES_HOST` | localhost | Host de PostgreSQL |
-| `STATS_POSTGRES_PORT` | 5433 | Puerto de PostgreSQL (Docker remapea 5432→5433) |
+| `STATS_POSTGRES_PORT` | 5433 | Puerto (Docker remapea 5432→5433) |
 | `STATS_POSTGRES_USER` | stats | Usuario |
 | `STATS_POSTGRES_PASSWORD` | stats | Contraseña |
 | `STATS_POSTGRES_DB` | stats_app | Base de datos |
 | `STATS_REDIS_HOST` | localhost | Host de Redis |
 | `STATS_REDIS_PORT` | 6379 | Puerto de Redis |
+| `STATS_API_URL` | http://localhost:8000 | URL del API (web: proxy SSR + rewrite) |
+| `STATS_ENV` | development | Entorno (echo SQL en desarrollo) |
+
+## Pruebas
+
+- **Unitarias**: vitest (web) y pytest (API). El API requiere PostgreSQL y Redis.
+- **E2E**: Playwright cubre dashboard, scanner, detalle, parlay e historial contra
+  el stack integrado, en desktop y móvil. El bootstrap migra, siembra, calcula y
+  refresca cuotas automáticamente.
+- **Rendimiento**: regresiones de N+1 con conteo de queries (`tests/test_performance.py`).
+- **Accesibilidad**: auditoría axe-core WCAG AA en flujos críticos
+  (`e2e/a11y.spec.ts`). Ver `apps/web/ACCESSIBILITY.md`.
+
+## Observabilidad
+
+- Logs JSON con `service`, `release`, `correlation_id` y `job_id` (sin secretos).
+- `X-Correlation-Id` se propaga web→API→worker.
+- Métricas Prometheus en `/api/v1/ops/metrics` (latencia, errores, backlog,
+  retry, DLQ, frescura de cuotas).
+
+## Demo
+
+```bash
+apps/api/.venv/Scripts/python -m app.seeds.run          # siembra
+apps/api/.venv/Scripts/python -m app.jobs.run_resolution # calcula + resuelve demo
+apps/api/.venv/Scripts/python -m app.backtest.run        # backtesting walk-forward
+```
+
+Rutas web: `/` jornada · `/scanner` oportunidades · `/matches/{id}` detalle ·
+`/parlay` constructor · `/history` historial y métricas.
+
+## Despliegue (staging)
+
+Ver `docs/runbooks/release.md` para el runbook completo (expand-contract,
+backup, smoke y rollback de apps/esquema/cola) y la checklist con responsables.
+
+```bash
+docker build -f apps/api/Dockerfile    -t stats-api:latest .
+docker build -f apps/worker/Dockerfile -t stats-worker:latest .
+docker build -f apps/web/Dockerfile --build-arg STATS_API_URL=http://api:8000 -t stats-web:latest .
+docker compose -f infra/docker-compose.staging.yml up --build --abort-on-container-exit
+```
 
 ## CI/CD
 
-El pipeline en `.github/workflows/ci.yml` valida:
+`.github/workflows/ci.yml` valida web (lint/test/build), API (pytest contra
+PostgreSQL/Redis) y contratos (OpenAPI).
 
-- **Web:** lint, test y build de Next.js
-- **API:** pytest contra FastAPI con servicios PostgreSQL y Redis
-- **Contracts:** validación del esquema OpenAPI
+## Limitaciones (MVP demo)
+
+- Datos demo reproducibles; sin API real aún (decisión go/no-go en `docs/adr/0007-*`).
+- Solo mercado Over/Under 2.5 prepartido.
+- Sin pagos, cuentas de casas de apuestas ni datos live.
+- Las probabilidades son estimaciones, no garantías.
 
 ## Troubleshooting
 
-**Error: `python` no encontrado**
-Instalar Python 3.12 desde https://python.org o `winget install Python.Python.3.12`.
+**`python` no encontrado**: instalar Python 3.12 o desactivar los alias del
+Microsoft Store.
 
-**Error: `eslint.config.mjs` no encontrado al ejecutar lint**
-Ejecutar eslint desde el directorio de la app: `npx eslint src` en `apps/web`.
+**`eslint.config.mjs` no encontrado al ejecutar lint**: correr eslint desde la
+app: `npx eslint src` en `apps/web`.
 
-**PostgreSQL o Redis no responden**
-Verificar que los contenedores están activos: `docker compose -f infra/docker-compose.yml ps`.
+**PostgreSQL o Redis no responden**: `docker compose -f infra/docker-compose.yml ps`.
 
-**Conflicto de puertos con PostgreSQL local**
-Si tienes PostgreSQL instalado localmente, ocupa el puerto 5432. Docker usa el puerto 5433 del host para evitarlo. Si el error de conexión persiste, detén el servicio local (`net stop postgresql-x64-16`) o ajusta `STATS_POSTGRES_PORT`.
+**Conflicto de puerto con PostgreSQL local**: Docker usa el 5433; detener el
+servicio local o ajustar `STATS_POSTGRES_PORT`.
 
-**python.exe del Microsoft Store**
-Desactivar los alias de ejecución en Configuración > Aplicaciones > Configuración avanzada > Alias de ejecución de aplicaciones, o usar la ruta completa a Python 3.12.
+**E2E no hidrata (403 en `/_next/static/chunks`)**: asegurar `allowedDevOrigins`
+incluye `127.0.0.1` y que no haya un `next dev` previo usando el puerto 3000.
