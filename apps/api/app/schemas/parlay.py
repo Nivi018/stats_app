@@ -35,6 +35,9 @@ class ResolvedSelectionDto(BaseModel):
     edge_pp: float
     data_quality: str
     risk_level: str
+    confidence_level: str
+    confidence_score: float
+    confidence_factors: list[str] = []
 
 
 class ParlayEstimateDto(BaseModel):

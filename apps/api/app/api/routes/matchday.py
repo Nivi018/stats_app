@@ -10,6 +10,7 @@ from app.application.matchday import MatchdayService
 from app.application.opportunities import OpportunityService
 from app.core.errors import error_response
 from app.db.session import async_session
+from app.domain.confidence import assess_confidence
 from app.explanation.builder import build_explanation
 from app.models import Prediction
 from app.schemas.matchday import (
@@ -65,9 +66,39 @@ def _to_odds_dto(o) -> OddsDto:
     )
 
 
-def _to_prediction_dto(prediction: Prediction) -> PredictionDto:
+def _freshness_seconds(odds: list, at: datetime | None = None) -> float:
+    """Antigüedad de la cuota observable más reciente del partido."""
+    at = at or datetime.now(UTC)
+    if at.tzinfo is None:
+        at = at.replace(tzinfo=UTC)
+    if not odds:
+        return float("inf")
+    latest = max(o.captured_at for o in odds)
+    if latest.tzinfo is None:
+        latest = latest.replace(tzinfo=UTC)
+    return max(0, (at - latest).total_seconds())
+
+
+def _apply_confidence(dto: PredictionDto, *, freshness_seconds: float) -> PredictionDto:
+    confidence = assess_confidence(
+        probability=dto.probability,
+        data_quality=dto.data_quality,
+        freshness_seconds=freshness_seconds,
+    )
+    dto.snapshot_age_minutes = int(freshness_seconds // 60)
+    dto.confidence_level = confidence.level
+    dto.confidence_score = confidence.score
+    dto.confidence_factors = confidence.factors
+    return dto
+
+
+def _to_prediction_dto(
+    prediction: Prediction, *, freshness_seconds: float | None = None
+) -> PredictionDto:
     dto = PredictionDto.model_validate(prediction)
     dto.explanation = build_explanation(prediction)
+    if freshness_seconds is not None:
+        _apply_confidence(dto, freshness_seconds=freshness_seconds)
     return dto
 
 
@@ -108,12 +139,13 @@ async def get_match_detail(
     over, under = _odds_selection(odds)
     stats = await service.get_match_stats(match_id)
     predictions = await service.get_match_predictions(match_id)
+    freshness = _freshness_seconds(odds)
 
     return MatchDetailDto(
         match=_build_match_dto(match, over, under),
         stats=[TeamMatchStatsDto(**s.__dict__) for s in stats],
         odds=[_to_odds_dto(o) for o in odds],
-        predictions=[_to_prediction_dto(p) for p in predictions],
+        predictions=[_to_prediction_dto(p, freshness_seconds=freshness) for p in predictions],
     )
 
 
@@ -141,7 +173,8 @@ async def get_prediction(
         return error_response(
             404, "not_found", f"Predicción no encontrada: {prediction_id}", request
         )
-    return _to_prediction_dto(prediction)
+    freshness = await service.get_prediction_freshness(prediction)
+    return _to_prediction_dto(prediction, freshness_seconds=freshness)
 
 
 def get_opportunity_service(request: Request) -> OpportunityService:
@@ -186,6 +219,9 @@ async def get_opportunities(
             is_signal=o.is_signal,
             signal_exclusions=o.signal_exclusions,
             snapshot_age_minutes=o.snapshot_age_minutes,
+            confidence_level=o.confidence_level,
+            confidence_score=o.confidence_score,
+            confidence_factors=o.confidence_factors,
         )
         for o in opportunities
     ]

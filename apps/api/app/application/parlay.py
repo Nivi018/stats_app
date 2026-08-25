@@ -6,12 +6,13 @@ riesgo agregado, y reporta correlaciones. No persiste nada: es una consulta.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.domain.confidence import assess_confidence
 from app.domain.odds import edge_pp
 from app.domain.parlay import (
     PARLAY_MAX,
@@ -43,6 +44,9 @@ class ResolvedSelection:
     edge_pp: float
     data_quality: str
     risk_level: str
+    confidence_level: str
+    confidence_score: float
+    confidence_factors: list[str]
 
 
 @dataclass(frozen=True)
@@ -136,7 +140,7 @@ class ParlayService:
                 )
                 .order_by(Prediction.prediction_timestamp.desc())
             )
-        ).scalar_one_or_none()
+        ).scalars().first()
         if prediction is None:
             raise SelectionUnresolvable(
                 f"Sin predicción para {match_id}::{market}::{selection}"
@@ -160,6 +164,14 @@ class ParlayService:
 
         home_short = home_team.short_name or home_team.name
         away_short = away_team.short_name or away_team.name
+        observed = snapshot.observed_at
+        now = datetime.now(timezone.utc)
+        freshness = max(0, (now - observed).total_seconds())
+        confidence = assess_confidence(
+            probability=prediction.probability,
+            data_quality=prediction.data_quality,
+            freshness_seconds=freshness,
+        )
         return ResolvedSelection(
             key=f"{match_id}::{market}::{selection}",
             match_id=match_id,
@@ -176,4 +188,7 @@ class ParlayService:
             edge_pp=round(edge_pp(prediction.probability, 1 / snapshot.odds), 2),
             data_quality=prediction.data_quality,
             risk_level=prediction.risk_level,
+            confidence_level=confidence.level,
+            confidence_score=confidence.score,
+            confidence_factors=confidence.factors,
         )

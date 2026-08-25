@@ -5,12 +5,13 @@ La API depende de estos servicios; nunca accede a PostgreSQL directamente.
 
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.providers import DomainMatch, DomainOddsSnapshot, DomainTeamMatchStats
-from app.models import Match, Prediction
+from app.models import Match, OddsSnapshot, Prediction
 from app.providers.demo import DemoOddsProvider, DemoSportsDataProvider
 
 
@@ -81,5 +82,29 @@ class MatchdayService:
         except ValueError:
             return None
         async with self._session_factory() as session:
-            result = await session.execute(select(Prediction).where(Prediction.id == prediction_uuid))
+            result = await session.execute(
+                select(Prediction).where(Prediction.id == prediction_uuid)
+            )
             return result.scalar_one_or_none()
+
+    async def get_prediction_freshness(self, prediction: Prediction, at=None) -> float:
+        """Antigüedad de la cuota vigente más cercana a la predicción (segundos)."""
+        at = at or datetime.now(UTC)
+        async with self._session_factory() as session:
+            observed = (
+                await session.execute(
+                    select(OddsSnapshot.observed_at)
+                    .where(
+                        OddsSnapshot.match_id == prediction.match_id,
+                        OddsSnapshot.market == prediction.market,
+                        OddsSnapshot.selection == prediction.selection,
+                    )
+                    .order_by(OddsSnapshot.observed_at.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+        if observed is None:
+            return float("inf")
+        if observed.tzinfo is None:
+            observed = observed.replace(tzinfo=UTC)
+        return max(0, (at - observed).total_seconds())

@@ -75,6 +75,10 @@ class PredictionDto(BaseModel):
     inputs_hash: str
     prediction_timestamp: datetime
     explanation: dict | None = None
+    snapshot_age_minutes: int | None = None
+    confidence_level: str | None = None
+    confidence_score: float | None = None
+    confidence_factors: list[str] = []
 
 
 class MatchDetailDto(BaseModel):
@@ -109,3 +113,6 @@ class OpportunityDto(BaseModel):
     is_signal: bool
     signal_exclusions: list[str]
     snapshot_age_minutes: int
+    confidence_level: str
+    confidence_score: float
+    confidence_factors: list[str] = []

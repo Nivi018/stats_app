@@ -501,6 +501,19 @@ components:
         prediction_timestamp:
           type: string
           format: date-time
+        snapshot_age_minutes:
+          type: integer
+          nullable: true
+        confidence_level:
+          type: string
+          nullable: true
+        confidence_score:
+          type: number
+          nullable: true
+        confidence_factors:
+          type: array
+          items:
+            type: string
         explanation:
           type: object
           nullable: true
@@ -578,6 +591,14 @@ components:
             type: string
         snapshot_age_minutes:
           type: integer
+        confidence_level:
+          type: string
+        confidence_score:
+          type: number
+        confidence_factors:
+          type: array
+          items:
+            type: string
 
     ErrorResponse:
       type: object
@@ -648,6 +669,14 @@ components:
           type: string
         risk_level:
           type: string
+        confidence_level:
+          type: string
+        confidence_score:
+          type: number
+        confidence_factors:
+          type: array
+          items:
+            type: string
 
     ParlayEstimate:
       type: object

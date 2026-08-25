@@ -46,6 +46,9 @@ async def estimate_parlay(
                 edge_pp=s.edge_pp,
                 data_quality=s.data_quality,
                 risk_level=s.risk_level,
+                confidence_level=s.confidence_level,
+                confidence_score=s.confidence_score,
+                confidence_factors=s.confidence_factors,
             )
             for s in result.selections
         ],

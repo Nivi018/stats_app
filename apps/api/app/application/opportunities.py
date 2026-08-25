@@ -5,13 +5,14 @@ de cuotas elegible (de-vig), calcula edge y EV, y aplica la política de
 señales. No recalcula el modelo en cada request.
 """
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 from collections import defaultdict
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import aliased
 
+from app.domain.confidence import assess_confidence
 from app.domain.odds import edge_pp, expected_value
 from app.model.signal import evaluate_signal
 from app.models import Match, OddsSnapshot, Prediction, Team
@@ -37,6 +38,9 @@ class Opportunity:
     is_signal: bool
     signal_exclusions: list[str]
     snapshot_age_minutes: int
+    confidence_level: str
+    confidence_score: float
+    confidence_factors: list[str]
 
 
 class OpportunityService:
@@ -52,9 +56,9 @@ class OpportunityService:
         matchday: int | None = None,
         sort: str = "edge",
     ) -> list[Opportunity]:
-        at = at or datetime.now(timezone.utc)
+        at = at or datetime.now(UTC)
         if at.tzinfo is None:
-            at = at.replace(tzinfo=timezone.utc)
+            at = at.replace(tzinfo=UTC)
 
         async with self._session_factory() as session:
             home = aliased(Team)
@@ -128,6 +132,11 @@ class OpportunityService:
                         data_quality=pred.data_quality,
                         snapshot_age_seconds=age_seconds,
                     )
+                    confidence = assess_confidence(
+                        probability=pred.probability,
+                        data_quality=pred.data_quality,
+                        freshness_seconds=age_seconds,
+                    )
                     opportunity = Opportunity(
                         match_id=match.external_id,
                         home_team_short=home_team.short_name or home_team.name,
@@ -146,6 +155,9 @@ class OpportunityService:
                         is_signal=decision.is_signal,
                         signal_exclusions=decision.exclusions,
                         snapshot_age_minutes=int(age_seconds / 60),
+                        confidence_level=confidence.level,
+                        confidence_score=confidence.score,
+                        confidence_factors=confidence.factors,
                     )
                     if opportunity.edge_pp < min_edge:
                         continue
