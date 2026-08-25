@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ConfidenceMeter } from "@/components/confidence";
 import { ErrorAlert } from "@/components/error-alert";
 import { errorCorrelationId, fetchOpportunities, type OpportunityDto, type OpportunityFilters } from "@/lib/api/client";
 
@@ -177,6 +178,7 @@ export default async function ScannerPage({ searchParams }: { searchParams: Sear
                   <th scope="col" className="py-3 pr-4 font-semibold text-right">EV</th>
                   <th scope="col" className="py-3 pr-4 font-semibold">Calidad</th>
                   <th scope="col" className="py-3 pr-4 font-semibold">Riesgo</th>
+                  <th scope="col" className="py-3 pr-4 font-semibold">Confianza</th>
                   <th scope="col" className="py-3 font-semibold">Estado</th>
                 </tr>
               </thead>
@@ -216,6 +218,11 @@ export default async function ScannerPage({ searchParams }: { searchParams: Sear
                         />
                         {op.risk_level}
                       </span>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <div className="max-w-[150px]">
+                        <ConfidenceMeter level={op.confidence_level} score={op.confidence_score} compact />
+                      </div>
                     </td>
                     <td className="py-3">
                       <span className={op.is_signal ? "font-semibold text-[var(--accent)]" : "text-[var(--muted)]"}>

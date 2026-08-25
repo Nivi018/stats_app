@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ConfidenceMeter } from "@/components/confidence";
 import { ErrorAlert } from "@/components/error-alert";
 import { errorCorrelationId, fetchMatchDetail, type PredictionDto, type TeamMatchStatsDto } from "@/lib/api/client";
 
@@ -113,6 +114,15 @@ function ModelPanel({ predictions }: { predictions: PredictionDto[] }) {
               </dd>
             </div>
           </dl>
+          {p.confidence_score != null && p.confidence_level && (
+            <div className="mt-4">
+              <ConfidenceMeter
+                level={p.confidence_level}
+                score={p.confidence_score}
+                factors={p.confidence_factors}
+              />
+            </div>
+          )}
         </div>
       ))}
     </div>

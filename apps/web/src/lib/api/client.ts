@@ -105,6 +105,9 @@ export type OpportunityDto = {
   is_signal: boolean;
   signal_exclusions: string[];
   snapshot_age_minutes: number;
+  confidence_level: string;
+  confidence_score: number;
+  confidence_factors: string[];
 };
 
 export type OpportunityFilters = {
@@ -146,6 +149,10 @@ export type PredictionDto = {
   inputs: string | null;
   inputs_hash: string;
   prediction_timestamp: string;
+  snapshot_age_minutes: number | null;
+  confidence_level: string | null;
+  confidence_score: number | null;
+  confidence_factors: string[];
   explanation: SignalExplanation | null;
 };
 
@@ -216,6 +223,21 @@ export async function fetchOpportunities(filters: OpportunityFilters = {}): Prom
   return (await response.json()) as OpportunityDto[];
 }
 
+export async function fetchFeaturedSignals(limit = 3): Promise<OpportunityDto[]> {
+  const url = `/api/v1/signals/featured?limit=${limit}`;
+  const response = await fetch(apiUrl(url), { next: { revalidate: 60 } });
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as ErrorDto | null;
+    throw new ApiError(
+      response.status,
+      payload ?? { code: "unknown", message: response.statusText, details: null, correlation_id: "" },
+    );
+  }
+
+  return (await response.json()) as OpportunityDto[];
+}
+
 export type ParlaySelectionRef = {
   match_id: string;
   market: string;
@@ -236,6 +258,9 @@ export type ResolvedSelectionDto = {
   edge_pp: number;
   data_quality: string;
   risk_level: string;
+  confidence_level: string;
+  confidence_score: number;
+  confidence_factors: string[];
 };
 
 export type ParlayEstimateDto = {

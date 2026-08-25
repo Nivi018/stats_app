@@ -11,6 +11,7 @@ import {
   type ParlayEstimateDto,
   type ResolvedSelectionDto,
 } from "@/lib/api/client";
+import { ConfidenceMeter } from "@/components/confidence";
 import {
   PARLAY_MAX,
   PARLAY_MIN,
@@ -239,6 +240,15 @@ export default function ParlayBuilder({
                         {marketLabel(selection.selection)}
                         {resolved ? ` · Cuota ${resolved.odds.toFixed(2)}` : ""}
                       </p>
+                      {resolved && resolved.confidence_score != null && (
+                        <div className="mt-2 max-w-[220px]">
+                          <ConfidenceMeter
+                            level={resolved.confidence_level}
+                            score={resolved.confidence_score}
+                            compact
+                          />
+                        </div>
+                      )}
                     </div>
                     <button
                       type="button"
