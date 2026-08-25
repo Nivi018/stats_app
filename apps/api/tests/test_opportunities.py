@@ -60,6 +60,18 @@ async def test_opportunities_return_signal_rows(computed):
 
 
 @pytest.mark.asyncio
+async def test_opportunities_include_confidence(computed):
+    service = OpportunityService(session_factory)
+    opportunities = await service.get_opportunities(at=AT)
+
+    assert opportunities
+    for o in opportunities:
+        assert o.confidence_level in {"baja", "media", "alta"}
+        assert 0 <= o.confidence_score <= 100
+        assert o.confidence_factors
+
+
+@pytest.mark.asyncio
 async def test_opportunities_sorted_signals_first(computed):
     service = OpportunityService(session_factory)
     opportunities = await service.get_opportunities(at=AT)
