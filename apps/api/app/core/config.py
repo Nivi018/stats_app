@@ -8,14 +8,14 @@ class Settings(BaseSettings):
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
 
-    POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: int = 5433
+    POSTGRES_HOST: str = "127.0.0.1"
+    POSTGRES_PORT: int = 5434
     POSTGRES_USER: str = "stats"
     POSTGRES_PASSWORD: str = "stats"
     POSTGRES_DB: str = "stats_app"
 
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
+    REDIS_HOST: str = "127.0.0.1"
+    REDIS_PORT: int = 6380
 
     @property
     def postgres_url(self) -> str:

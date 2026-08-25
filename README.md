@@ -87,12 +87,12 @@ Copiar `.env.example` a `.env` y ajustar según entorno. Prefijo `STATS_`.
 | Variable | Default | Descripción |
 |----------|---------|-------------|
 | `STATS_POSTGRES_HOST` | localhost | Host de PostgreSQL |
-| `STATS_POSTGRES_PORT` | 5433 | Puerto (Docker remapea 5432→5433) |
+| `STATS_POSTGRES_PORT` | 5434 | Puerto (Docker remapea 5432→5434) |
 | `STATS_POSTGRES_USER` | stats | Usuario |
 | `STATS_POSTGRES_PASSWORD` | stats | Contraseña |
 | `STATS_POSTGRES_DB` | stats_app | Base de datos |
 | `STATS_REDIS_HOST` | localhost | Host de Redis |
-| `STATS_REDIS_PORT` | 6379 | Puerto de Redis |
+| `STATS_REDIS_PORT` | 6380 | Puerto de Redis (Docker remapea 6379?6380) |
 | `STATS_API_URL` | http://localhost:8000 | URL del API (web: proxy SSR + rewrite) |
 | `STATS_ENV` | development | Entorno (echo SQL en desarrollo) |
 
@@ -158,7 +158,7 @@ app: `npx eslint src` en `apps/web`.
 
 **PostgreSQL o Redis no responden**: `docker compose -f infra/docker-compose.yml ps`.
 
-**Conflicto de puerto con PostgreSQL local**: Docker usa el 5433; detener el
+**Conflicto de puerto con PostgreSQL local**: Docker usa el 5434 (Redis el 6380), lejos del PostgreSQL local; detener el
 servicio local o ajustar `STATS_POSTGRES_PORT`.
 
 **E2E no hidrata (403 en `/_next/static/chunks`)**: asegurar `allowedDevOrigins`

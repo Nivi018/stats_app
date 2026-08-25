@@ -12,7 +12,7 @@ import redis.asyncio as redis
 
 from app.jobs.payload import JobEnvelope
 
-DEFAULT_REDIS_URL = "redis://localhost:6379/0"
+DEFAULT_REDIS_URL = "redis://127.0.0.1:6380/0"
 
 
 class QueueBroker:

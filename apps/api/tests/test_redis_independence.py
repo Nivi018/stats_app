@@ -11,7 +11,7 @@ from app.seeds.loader import load_demo_seed
 from tests.conftest import engine
 
 session_factory = async_sessionmaker(engine, expire_on_commit=False)
-REDIS_URL = "redis://localhost:6379/0"
+REDIS_URL = "redis://127.0.0.1:6380/0"
 
 
 @pytest_asyncio.fixture

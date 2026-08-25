@@ -15,7 +15,7 @@ if sys.platform == "win32":
 
 TEST_DB_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://stats:stats@localhost:5433/stats_app",
+    "postgresql+asyncpg://stats:stats@127.0.0.1:5434/stats_app",
 )
 
 engine = create_async_engine(TEST_DB_URL, poolclass=NullPool)

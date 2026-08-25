@@ -22,9 +22,9 @@ TEST_DIR = os.path.dirname(__file__)
 API_DIR = os.path.dirname(TEST_DIR)
 ALEMBIC_DIR = os.path.join(API_DIR, "alembic")
 
-ADMIN_DSN = "postgresql://stats:stats@localhost:5433/postgres"
+ADMIN_DSN = "postgresql://stats:stats@127.0.0.1:5434/postgres"
 MIGRATE_DB = "stats_app_migtest"
-MIGRATE_URL = f"postgresql+asyncpg://stats:stats@localhost:5433/{MIGRATE_DB}"
+MIGRATE_URL = f"postgresql+asyncpg://stats:stats@127.0.0.1:5434/{MIGRATE_DB}"
 HEAD_REVISION = "06de9ee1fdc3"
 
 _TABLES = {

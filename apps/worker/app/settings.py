@@ -5,8 +5,8 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"
     ENV: str = "development"
 
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
+    REDIS_HOST: str = "127.0.0.1"
+    REDIS_PORT: int = 6380
 
     @property
     def redis_url(self) -> str:
