@@ -9,9 +9,18 @@ test.describe("recorridos críticos end-to-end (US1)", () => {
     await expect(page.getByText(/–/).first()).toBeVisible();
   });
 
+  test("dashboard muestra señales destacadas", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByText(/SEÑALES DESTACADAS/)).toBeVisible();
+    await expect(page.getByText(/Edge \+/).first()).toBeVisible();
+    const links = page.getByRole("link", { name: /–/ });
+    expect(await links.count()).toBeGreaterThanOrEqual(1);
+  });
+
   test("scanner muestra oportunidades y navega al detalle", async ({ page }) => {
     await page.goto("/scanner");
     await expect(page.getByRole("heading", { name: "Oportunidades" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Confianza" })).toBeVisible();
     const firstMatch = page.getByRole("link", { name: /–/ }).first();
     await firstMatch.click();
     await expect(page).toHaveURL(/\/matches\//);

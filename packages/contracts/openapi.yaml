@@ -182,6 +182,29 @@ paths:
                 items:
                   $ref: "#/components/schemas/Opportunity"
 
+  /signals/featured:
+    get:
+      operationId: getFeaturedSignals
+      summary: Señales destacadas del día (is_signal) ordenadas por edge, con confianza
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+            default: 3
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Opportunity"
+
   /parlays/estimate:
     post:
       operationId: estimateParlay

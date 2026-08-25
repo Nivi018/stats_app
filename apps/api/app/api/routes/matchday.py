@@ -182,6 +182,31 @@ def get_opportunity_service(request: Request) -> OpportunityService:
     return OpportunityService(factory or async_session)
 
 
+def _to_opportunity_dto(o) -> OpportunityDto:
+    return OpportunityDto(
+        match_id=o.match_id,
+        home_team_short=o.home_team_short,
+        away_team_short=o.away_team_short,
+        kickoff_at=o.kickoff_at,
+        market=o.market,
+        selection=o.selection,
+        model_probability=o.model_probability,
+        market_no_vig_probability=o.market_no_vig_probability,
+        observed_odds=o.observed_odds,
+        fair_odds=o.fair_odds,
+        edge_pp=o.edge_pp,
+        ev=o.ev,
+        data_quality=o.data_quality,
+        risk_level=o.risk_level,
+        is_signal=o.is_signal,
+        signal_exclusions=o.signal_exclusions,
+        snapshot_age_minutes=o.snapshot_age_minutes,
+        confidence_level=o.confidence_level,
+        confidence_score=o.confidence_score,
+        confidence_factors=o.confidence_factors,
+    )
+
+
 @router.get("/opportunities", response_model=list[OpportunityDto])
 async def get_opportunities(
     min_edge: float = Query(0, ge=-100, le=100, description="Edge mínimo en puntos porcentuales"),
@@ -200,28 +225,15 @@ async def get_opportunities(
         matchday=matchday,
         sort=sort,
     )
-    return [
-        OpportunityDto(
-            match_id=o.match_id,
-            home_team_short=o.home_team_short,
-            away_team_short=o.away_team_short,
-            kickoff_at=o.kickoff_at,
-            market=o.market,
-            selection=o.selection,
-            model_probability=o.model_probability,
-            market_no_vig_probability=o.market_no_vig_probability,
-            observed_odds=o.observed_odds,
-            fair_odds=o.fair_odds,
-            edge_pp=o.edge_pp,
-            ev=o.ev,
-            data_quality=o.data_quality,
-            risk_level=o.risk_level,
-            is_signal=o.is_signal,
-            signal_exclusions=o.signal_exclusions,
-            snapshot_age_minutes=o.snapshot_age_minutes,
-            confidence_level=o.confidence_level,
-            confidence_score=o.confidence_score,
-            confidence_factors=o.confidence_factors,
-        )
-        for o in opportunities
-    ]
+    return [_to_opportunity_dto(o) for o in opportunities]
+
+
+@router.get("/signals/featured", response_model=list[OpportunityDto])
+async def get_featured_signals(
+    limit: int = Query(3, ge=1, le=10, description="Cantidad de señales destacadas a devolver"),
+    service: OpportunityService = Depends(get_opportunity_service),
+):
+    """Top señales (is_signal) del día ordenadas por edge, con confianza."""
+    opportunities = await service.get_opportunities(min_edge=0)
+    signals = [o for o in opportunities if o.is_signal]
+    return [_to_opportunity_dto(o) for o in signals[:limit]]

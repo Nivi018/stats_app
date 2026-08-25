@@ -1,5 +1,13 @@
+import Link from "next/link";
+import { ConfidenceMeter } from "@/components/confidence";
 import { ErrorAlert } from "@/components/error-alert";
-import { errorCorrelationId, fetchMatchday, type MatchDto } from "@/lib/api/client";
+import {
+  errorCorrelationId,
+  fetchFeaturedSignals,
+  fetchMatchday,
+  type MatchDto,
+  type OpportunityDto,
+} from "@/lib/api/client";
 
 export const dynamic = "force-dynamic";
 
@@ -35,11 +43,20 @@ export default async function Home() {
   let error: string | null = null;
   let correlationId: string | null = null;
 
+  let signals: OpportunityDto[] = [];
+  let signalsError: string | null = null;
+
   try {
     matchday = await fetchMatchday();
   } catch (e) {
     error = e instanceof Error ? e.message : "No se pudo contactar la API";
     correlationId = errorCorrelationId(e);
+  }
+
+  try {
+    signals = await fetchFeaturedSignals(3);
+  } catch (e) {
+    signalsError = e instanceof Error ? e.message : "No se pudieron cargar las señales";
   }
 
   return (
@@ -140,6 +157,62 @@ export default async function Home() {
             </div>
           )}
         </div>
+      </section>
+
+      <section aria-label="Señales destacadas" className="mx-auto mt-2 max-w-6xl pb-10">
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 className="text-sm font-semibold tracking-[0.15em] text-[var(--muted)]">
+            SEÑALES DESTACADAS
+          </h2>
+          <Link href="/scanner" className="text-xs text-[var(--muted)] underline">
+            Ver todas
+          </Link>
+        </div>
+
+        {signalsError ? (
+          <p role="status" className="mt-3 text-sm text-[var(--muted)]">
+            No se pudieron cargar las señales destacadas.
+          </p>
+        ) : signals.length === 0 ? (
+          <p className="mt-3 border-t border-[var(--rule)] py-6 text-sm text-[var(--muted)]">
+            Aún no hay señales destacadas. Ejecuta el worker de predicciones para generarlas.
+          </p>
+        ) : (
+          <ul className="mt-3 border-t border-[var(--rule)]">
+            {signals.map((signal) => (
+              <li
+                key={`${signal.match_id}-${signal.selection}`}
+                className="grid gap-3 border-b border-[var(--rule)] py-4 text-sm sm:grid-cols-[1fr_auto] sm:items-center"
+              >
+                <div>
+                  <p className="font-semibold">
+                    <Link href={`/matches/${signal.match_id}`} className="underline decoration-[var(--rule)] underline-offset-2 hover:decoration-[var(--foreground)]">
+                      {signal.home_team_short} – {signal.away_team_short}
+                    </Link>
+                    <span className="ml-2 text-xs text-[var(--muted)]">
+                      {signal.selection === "over" ? "Over 2.5" : "Under 2.5"}
+                    </span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-[var(--muted)]">
+                    Edge +{signal.edge_pp.toFixed(1)}pp · EV {signal.ev.toFixed(3)} · cuota{" "}
+                    {signal.observed_odds.toFixed(2)}
+                  </p>
+                </div>
+                <div className="max-w-[220px] sm:w-[220px]">
+                  <ConfidenceMeter
+                    level={signal.confidence_level}
+                    score={signal.confidence_score}
+                    factors={signal.confidence_factors}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-3 text-xs text-[var(--muted)]">
+          Las señales destacadas son las de mayor edge según la política del producto; son
+          evidencia trazable, no una garantía de resultado.
+        </p>
       </section>
     </main>
   );
