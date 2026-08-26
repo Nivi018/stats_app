@@ -112,6 +112,7 @@ Copiar `.env.example` a `.env` y ajustar según entorno. Prefijo `STATS_`.
 - `X-Correlation-Id` se propaga web→API→worker.
 - Métricas Prometheus en `/api/v1/ops/metrics` (latencia, errores, backlog,
   retry, DLQ, frescura de cuotas).
+- Guía "cómo confiar en el modelo" en `apps/web/VERIFICATION.md`.
 
 ## Stake responsable (Sprint 7)
 
