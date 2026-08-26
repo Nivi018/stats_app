@@ -115,6 +115,30 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /matches/{match_id}/context:
+    get:
+      operationId: getMatchContext
+      summary: Contexto del partido (forma reciente y cara a cara)
+      parameters:
+        - name: match_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchContext"
+        "404":
+          description: Partido no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /predictions/{prediction_id}:
     get:
       operationId: getPrediction
@@ -478,6 +502,40 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Prediction"
+
+    FormEntry:
+      type: object
+      required: [result, opponent_short, home_goals, away_goals, kickoff_at]
+      properties:
+        result:
+          type: string
+          enum: [W, D, L]
+        opponent_short:
+          type: string
+        home_goals:
+          type: integer
+        away_goals:
+          type: integer
+        kickoff_at:
+          type: string
+          format: date-time
+
+    MatchContext:
+      type: object
+      required: [home_form, away_form, h2h]
+      properties:
+        home_form:
+          type: array
+          items:
+            $ref: "#/components/schemas/FormEntry"
+        away_form:
+          type: array
+          items:
+            $ref: "#/components/schemas/FormEntry"
+        h2h:
+          type: array
+          items:
+            $ref: "#/components/schemas/FormEntry"
 
     Prediction:
       type: object

@@ -88,6 +88,20 @@ class MatchDetailDto(BaseModel):
     predictions: list[PredictionDto] = []
 
 
+class FormEntryDto(BaseModel):
+    result: str
+    opponent_short: str
+    home_goals: int
+    away_goals: int
+    kickoff_at: datetime
+
+
+class MatchContextDto(BaseModel):
+    home_form: list[FormEntryDto]
+    away_form: list[FormEntryDto]
+    h2h: list[FormEntryDto]
+
+
 class ErrorDto(BaseModel):
     code: str
     message: str

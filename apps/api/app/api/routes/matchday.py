@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application.context import ContextService
 from app.application.matchday import MatchdayService
 from app.application.opportunities import OpportunityService
 from app.core.errors import error_response
@@ -14,6 +15,8 @@ from app.domain.confidence import assess_confidence
 from app.explanation.builder import build_explanation
 from app.models import Prediction
 from app.schemas.matchday import (
+    FormEntryDto,
+    MatchContextDto,
     MatchdayDto,
     MatchDetailDto,
     OddsDto,
@@ -160,6 +163,37 @@ async def get_match_odds(
         return error_response(404, "not_found", f"Partido no encontrado: {match_id}", request)
     odds = await service.get_match_odds(match_id)
     return [_to_odds_dto(o) for o in odds]
+
+
+def get_context_service(request: Request) -> ContextService:
+    factory = getattr(request.app.state, "session_factory", None)
+    return ContextService(factory or async_session)
+
+
+@router.get("/matches/{match_id}/context", response_model=MatchContextDto)
+async def get_match_context(
+    match_id: str,
+    request: Request,
+    service: ContextService = Depends(get_context_service),
+):
+    context = await service.get_context(match_id)
+    if context is None:
+        return error_response(404, "not_found", f"Partido no encontrado: {match_id}", request)
+    return MatchContextDto(
+        home_form=[_to_form_dto(e) for e in context.home_form],
+        away_form=[_to_form_dto(e) for e in context.away_form],
+        h2h=[_to_form_dto(e) for e in context.h2h],
+    )
+
+
+def _to_form_dto(entry) -> FormEntryDto:
+    return FormEntryDto(
+        result=entry.result,
+        opponent_short=entry.opponent_short,
+        home_goals=entry.home_goals,
+        away_goals=entry.away_goals,
+        kickoff_at=entry.kickoff_at,
+    )
 
 
 @router.get("/predictions/{prediction_id}", response_model=PredictionDto)
