@@ -33,6 +33,10 @@ test.describe("recorridos críticos end-to-end (US1)", () => {
     await expect(page.getByText(/MODELO/)).toBeVisible();
     await expect(page.getByText(/ESTADÍSTICAS/)).toBeVisible();
     await expect(page.getByText(/CONTEXTO/)).toBeVisible();
+    // Selector de mercado del multimercado.
+    await expect(page.getByRole("button", { name: "1X2" })).toBeVisible();
+    await page.getByRole("button", { name: "1X2" }).click();
+    await expect(page.getByText(/1X2 · /).first()).toBeVisible();
   });
 
   test("constructor de parlay añade selecciones y estima", async ({ page }) => {

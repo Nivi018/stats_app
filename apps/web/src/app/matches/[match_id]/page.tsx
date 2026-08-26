@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ConfidenceMeter } from "@/components/confidence";
 import { ErrorAlert } from "@/components/error-alert";
 import {
   errorCorrelationId,
@@ -12,6 +11,7 @@ import {
   type PredictionDto,
   type TeamMatchStatsDto,
 } from "@/lib/api/client";
+import PredictionsModel from "./predictions-model";
 
 export const dynamic = "force-dynamic";
 
@@ -29,10 +29,6 @@ function formatKickoff(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function pct(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
 }
 
 function StatsTable({
@@ -78,62 +74,6 @@ function StatsTable({
         ))}
       </tbody>
     </table>
-  );
-}
-
-function ModelPanel({ predictions }: { predictions: PredictionDto[] }) {
-  if (predictions.length === 0) {
-    return <p className="text-sm text-[var(--muted)]">Sin predicción para este partido aún.</p>;
-  }
-  return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {predictions.map((p) => (
-        <div key={p.selection} className="border border-[var(--rule)] p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-            {p.selection === "over" ? "Over 2.5" : "Under 2.5"}
-          </p>
-          <dl className="mt-3 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-[var(--muted)]">Probabilidad</dt>
-              <dd className="font-medium tabular-nums">{pct(p.probability)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-[var(--muted)]">Cuota justa</dt>
-              <dd className="font-medium tabular-nums">{p.fair_odds.toFixed(3)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-[var(--muted)]">Calidad</dt>
-              <dd>{p.data_quality}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-[var(--muted)]">Riesgo</dt>
-              <dd>{p.risk_level}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-[var(--muted)]">Timestamp</dt>
-              <dd className="tabular-nums">
-                {new Date(p.prediction_timestamp).toLocaleString("es-MX")}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-[var(--muted)]">Versión</dt>
-              <dd>
-                {p.inputs ? JSON.parse(p.inputs).model_version : "—"}
-              </dd>
-            </div>
-          </dl>
-          {p.confidence_score != null && p.confidence_level && (
-            <div className="mt-4">
-              <ConfidenceMeter
-                level={p.confidence_level}
-                score={p.confidence_score}
-                factors={p.confidence_factors}
-              />
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -335,7 +275,7 @@ export default async function MatchDetailPage({ params }: Props) {
 
         <h2 className="mt-10 text-sm font-semibold tracking-[0.15em] text-[var(--muted)]">MODELO</h2>
         <div className="mt-4">
-          <ModelPanel predictions={detail!.predictions} />
+          <PredictionsModel predictions={detail!.predictions} />
         </div>
 
         {detail!.predictions.length > 0 && (

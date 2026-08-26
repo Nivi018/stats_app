@@ -139,7 +139,8 @@ export type PredictionDto = {
   match_id: string;
   model_version_id: string;
   market: string;
-  selection: "over" | "under";
+  selection: string;
+  line: number | null;
   probability: number;
   fair_odds: number;
   implied_probability: number | null;
