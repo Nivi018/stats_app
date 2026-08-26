@@ -113,6 +113,15 @@ Copiar `.env.example` a `.env` y ajustar según entorno. Prefijo `STATS_`.
 - Métricas Prometheus en `/api/v1/ops/metrics` (latencia, errores, backlog,
   retry, DLQ, frescura de cuotas).
 
+## Stake responsable (Sprint 7)
+
+El scanner y el parlay muestran una sugerencia de stake por unidad:
+
+- **Fórmula**: Kelly fraccionado (`(p·cuota − 1) / (cuota − 1) × 25%`).
+- **Tope**: 5% del bankroll por apuesta; 1 unidad = 2% del bankroll.
+- No se sugiere apostar con EV ≤ 0 ni cuota inválida.
+- **No es consejo financiero**: cada usuario define su propio bankroll.
+
 ## Demo
 
 ```bash
