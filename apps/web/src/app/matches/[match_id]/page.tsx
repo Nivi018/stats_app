@@ -3,7 +3,15 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ConfidenceMeter } from "@/components/confidence";
 import { ErrorAlert } from "@/components/error-alert";
-import { errorCorrelationId, fetchMatchDetail, type PredictionDto, type TeamMatchStatsDto } from "@/lib/api/client";
+import {
+  errorCorrelationId,
+  fetchMatchContext,
+  fetchMatchDetail,
+  type FormEntryDto,
+  type MatchContextDto,
+  type PredictionDto,
+  type TeamMatchStatsDto,
+} from "@/lib/api/client";
 
 export const dynamic = "force-dynamic";
 
@@ -188,17 +196,93 @@ function ExplanationPanel({ predictions }: { predictions: PredictionDto[] }) {
   );
 }
 
+function FormResultBadge({ result }: { result: "W" | "D" | "L" }) {
+  const label = result === "W" ? "G" : result === "D" ? "E" : "P";
+  const className =
+    result === "W"
+      ? "bg-[var(--accent)] text-white"
+      : result === "D"
+        ? "bg-[var(--rule)] text-[var(--muted)]"
+        : "bg-[var(--foreground)] text-white";
+  return (
+    <span
+      className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${className}`}
+      aria-label={result === "W" ? "Ganó" : result === "D" ? "Empató" : "Perdió"}
+    >
+      {label}
+    </span>
+  );
+}
+
+function FormBlock({ title, entries }: { title: string; entries: FormEntryDto[] }) {
+  if (entries.length === 0) return null;
+  return (
+    <div>
+      <h4 className="text-sm font-semibold text-[var(--muted)]">{title}</h4>
+      <ul className="mt-2 space-y-2 text-xs">
+        {entries.map((e) => (
+          <li key={`${e.kickoff_at}-${e.opponent_short}`} className="flex items-center gap-2">
+            <FormResultBadge result={e.result} />
+            <span>vs {e.opponent_short}</span>
+            <span className="tabular-nums text-[var(--muted)]">
+              {e.home_goals}–{e.away_goals}
+            </span>
+            <span className="ml-auto tabular-nums text-[var(--muted)]">
+              {new Date(e.kickoff_at).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ContextPanel({ context, error }: { context: MatchContextDto | null; error: string | null }) {
+  if (error) {
+    return (
+      <p role="status" className="text-sm text-[var(--muted)]">
+        No se pudo cargar el contexto del partido.
+      </p>
+    );
+  }
+  if (!context) return null;
+  const empty =
+    context.home_form.length === 0 && context.away_form.length === 0 && context.h2h.length === 0;
+  if (empty) {
+    return (
+      <p className="text-sm text-[var(--muted)]">
+        Sin historial previo registrado para este partido.
+      </p>
+    );
+  }
+  return (
+    <div className="grid gap-6 md:grid-cols-3">
+      <FormBlock title="Forma local" entries={context.home_form} />
+      <FormBlock title="Forma visitante" entries={context.away_form} />
+      <FormBlock title="Cara a cara" entries={context.h2h} />
+    </div>
+  );
+}
+
 export default async function MatchDetailPage({ params }: Props) {
   const { match_id } = await params;
 
   let detail;
   let error: string | null = null;
   let correlationId: string | null = null;
+  let context: MatchContextDto | null = null;
+  let contextError: string | null = null;
   try {
     detail = await fetchMatchDetail(match_id);
   } catch (e) {
     error = e instanceof Error ? e.message : "No se pudo contactar la API";
     correlationId = errorCorrelationId(e);
+  }
+
+  try {
+    context = await fetchMatchContext(match_id);
+  } catch (e) {
+    contextError = e instanceof Error ? e.message : "No se pudo cargar el contexto";
   }
 
   if (error) {
@@ -278,6 +362,11 @@ export default async function MatchDetailPage({ params }: Props) {
               />
             </div>
           )}
+        </div>
+
+        <h2 className="mt-10 text-sm font-semibold tracking-[0.15em] text-[var(--muted)]">CONTEXTO</h2>
+        <div className="mt-4">
+          <ContextPanel context={context} error={contextError} />
         </div>
 
         {detail!.predictions.length > 0 && (

@@ -32,6 +32,7 @@ test.describe("recorridos críticos end-to-end (US1)", () => {
     await page.goto("/matches/match-up-01");
     await expect(page.getByText(/MODELO/)).toBeVisible();
     await expect(page.getByText(/ESTADÍSTICAS/)).toBeVisible();
+    await expect(page.getByText(/CONTEXTO/)).toBeVisible();
   });
 
   test("constructor de parlay añade selecciones y estima", async ({ page }) => {

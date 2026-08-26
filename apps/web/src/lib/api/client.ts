@@ -184,20 +184,29 @@ export type OddsDto = {
   provider: string;
 };
 
-export async function fetchMatchDetail(matchId: string): Promise<MatchDetailDto> {
-  const response = await fetch(apiUrl(`/api/v1/matches/${encodeURIComponent(matchId)}`), {
-    next: { revalidate: 60 },
-  });
+export function fetchMatchDetail(matchId: string): Promise<MatchDetailDto> {
+  return getJson<MatchDetailDto>(`/api/v1/matches/${encodeURIComponent(matchId)}`, { next: { revalidate: 60 } });
+}
 
-  if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as ErrorDto | null;
-    throw new ApiError(
-      response.status,
-      payload ?? { code: "unknown", message: response.statusText, details: null, correlation_id: "" },
-    );
-  }
+export type FormEntryDto = {
+  result: "W" | "D" | "L";
+  opponent_short: string;
+  home_goals: number;
+  away_goals: number;
+  kickoff_at: string;
+};
 
-  return (await response.json()) as MatchDetailDto;
+export type MatchContextDto = {
+  home_form: FormEntryDto[];
+  away_form: FormEntryDto[];
+  h2h: FormEntryDto[];
+};
+
+export function fetchMatchContext(matchId: string): Promise<MatchContextDto> {
+  return getJson<MatchContextDto>(
+    `/api/v1/matches/${encodeURIComponent(matchId)}/context`,
+    { next: { revalidate: 60 } },
+  );
 }
 
 export async function fetchOpportunities(filters: OpportunityFilters = {}): Promise<OpportunityDto[]> {
