@@ -405,3 +405,44 @@ export function fetchHistory(filters: HistoryFilters = {}): Promise<HistoryPageD
   const query = params.toString();
   return getJson<HistoryPageDto>(`/api/v1/history${query ? `?${query}` : ""}`, { next: { revalidate: 30 } });
 }
+
+export type BacktestMetrics = {
+  sample_size: number;
+  wins: number;
+  losses: number;
+  voids: number;
+  hit_rate: number | null;
+  unit_roi: number | null;
+  brier: number | null;
+  sample_sufficient: boolean;
+  calibration_bins: CalibrationBinDto[];
+};
+
+export type BacktestBaseline = {
+  name: "market" | "league" | "poisson";
+  coverage: number;
+  coverage_n: number;
+  candidates_n: number;
+  metrics: BacktestMetrics;
+};
+
+export type BacktestFold = {
+  index: number;
+  train_size: number;
+  test_size: number;
+  baselines: BacktestBaseline[];
+};
+
+export type BacktestReportDto = {
+  n_folds: number;
+  dataset_version: string;
+  random_seed: number;
+  folds: BacktestFold[];
+  overall: BacktestBaseline[];
+  out_of_sample: BacktestBaseline[];
+  final_holdout: BacktestBaseline[];
+};
+
+export function fetchBacktest(folds = 4): Promise<BacktestReportDto> {
+  return getJson<BacktestReportDto>(`/api/v1/backtest?folds=${folds}`, { next: { revalidate: 30 } });
+}

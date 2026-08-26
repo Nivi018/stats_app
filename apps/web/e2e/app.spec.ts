@@ -55,6 +55,14 @@ test.describe("recorridos críticos end-to-end (US1)", () => {
     await expect(page.getByRole("heading", { name: "HISTORIAL", exact: true })).toBeVisible();
   });
 
+  test("backtest muestra el reporte walk-forward", async ({ page }) => {
+    await page.goto("/backtest");
+    await expect(page.getByRole("heading", { name: "Backtesting" })).toBeVisible();
+    await expect(page.getByText(/OUT-OF-SAMPLE/)).toBeVisible();
+    await expect(page.getByText(/Poisson/).first()).toBeVisible();
+    await expect(page.getByText(/PLIEGUES/)).toBeVisible();
+  });
+
   test("degradación: el error del parlay muestra correlation_id para soporte", async ({ page }) => {
     await page.goto("/parlay");
     await page.waitForLoadState("networkidle");

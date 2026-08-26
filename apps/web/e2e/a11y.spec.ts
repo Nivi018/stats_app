@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 // Flujos críticos sujetos a la auditoría WCAG AA (US2).
-const criticalRoutes = ["/", "/scanner", "/parlay", "/history"];
+const criticalRoutes = ["/", "/scanner", "/parlay", "/history", "/backtest"];
 
 test.describe("auditoría de accesibilidad WCAG AA", () => {
   for (const route of criticalRoutes) {
