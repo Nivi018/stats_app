@@ -159,6 +159,7 @@ class Prediction(Base):
     model_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("model_versions.id"), nullable=False, index=True)
     market: Mapped[str] = mapped_column(String(32), nullable=False)
     selection: Mapped[str] = mapped_column(String(16), nullable=False)
+    line: Mapped[float | None] = mapped_column(Float, nullable=True)
     probability: Mapped[float] = mapped_column(Float, nullable=False)
     fair_odds: Mapped[float] = mapped_column(Float, nullable=False)
     implied_probability: Mapped[float | None] = mapped_column(Float, nullable=True)

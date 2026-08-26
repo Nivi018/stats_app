@@ -11,6 +11,7 @@ alta puede fallar. La política es versionada para poder evolucionarla sin
 romper consumidores.
 """
 
+import math
 from dataclasses import dataclass
 from datetime import timedelta
 
@@ -101,9 +102,11 @@ def assess_confidence(
         factors.append(f"Probabilidad moderada ({probability_pct}%)")
 
     factors.append(f"Calidad de datos: {data_quality}")
-    minutes = int(freshness_seconds // 60)
-    factors.append(f"Cuota con {minutes} min de antigüedad")
-
+    if math.isfinite(freshness_seconds):
+        minutes = int(freshness_seconds // 60)
+        factors.append(f"Cuota con {minutes} min de antigüedad")
+    else:
+        factors.append("Sin snapshot de cuota conocido")
     if level == LEVEL_BAJA:
         factors.append("Confianza baja: revisa calidad y frescura antes de decidir")
 

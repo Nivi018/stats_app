@@ -52,7 +52,13 @@ async def test_recalculation_preserves_history(runner, broker):
     await runner.process_one()
 
     async with session_factory() as session:
-        predictions = (await session.execute(select(Prediction).order_by(Prediction.prediction_timestamp))).scalars().all()
+        predictions = (
+            await session.execute(
+                select(Prediction)
+                .where(Prediction.market == "over_under_2_5")
+                .order_by(Prediction.prediction_timestamp)
+            )
+        ).scalars().all()
         assert len(predictions) == 4  # dos cálculos: over+under cada uno
         assert predictions[0].prediction_timestamp != predictions[2].prediction_timestamp
 

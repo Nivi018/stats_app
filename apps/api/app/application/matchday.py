@@ -69,9 +69,9 @@ class MatchdayService:
                     .order_by(Prediction.prediction_timestamp.desc())
                 )
             ).scalars().all()
-            latest: dict[str, Prediction] = {}
+            latest: dict[tuple, Prediction] = {}
             for pred in preds:
-                latest.setdefault(pred.selection, pred)
+                latest.setdefault((pred.market, pred.selection), pred)
             return list(latest.values())
 
     async def get_prediction(self, prediction_id: str) -> Prediction | None:

@@ -99,9 +99,79 @@ def build_compute_prediction_handler(session_factory):
                         prediction_timestamp=now,
                     )
                 )
+
+            for market, selection, line, probability, fair in _derived_markets(
+                lambda_home, lambda_away
+            ):
+                session.add(
+                    Prediction(
+                        match_id=match.id,
+                        model_version_id=model_version.id,
+                        market=market,
+                        selection=selection,
+                        line=line,
+                        probability=probability,
+                        fair_odds=fair,
+                        data_quality=feature_vector.data_quality,
+                        risk_level=feature_vector.risk_level,
+                        inputs=inputs_json,
+                        inputs_hash=_hash_of(inputs_json),
+                        prediction_timestamp=now,
+                    )
+                )
             await session.commit()
 
     return compute_prediction
+
+
+def _derived_markets(lambda_home: float, lambda_away: float):
+    """Predicciones extra de 1X2, totales por equipo y hándicap."""
+    from app.domain.odds import fair_odds, round_to
+    from app.model.markets import (
+        probability_1x2,
+        probability_handicap,
+        probability_team_total,
+        score_matrix,
+    )
+
+    matrix = score_matrix(lambda_home, lambda_away)
+    rows: list[tuple[str, str, float | None, float, float]] = []
+
+    def add(market: str, selection: str, p: float, line: float | None = None):
+        if p <= 0:
+            return
+        rows.append((market, selection, line, round(p, 6), round_to(fair_odds(p), 4)))
+
+    p_home, p_draw, p_away = probability_1x2(matrix)
+    add("1x2", "home", p_home)
+    add("1x2", "draw", p_draw)
+    add("1x2", "away", p_away)
+
+    for team, market in (("home", "home_total"), ("away", "away_total")):
+        for outcome in ("over", "under"):
+            p = probability_team_total(
+                matrix, team=team, outcome=outcome, line=1.5
+            )
+            add(market, outcome, p, 1.5)
+
+    for key, selection in (
+        ("home", "cover"),
+        ("home", "not_cover"),
+        ("away", "cover"),
+        ("away", "not_cover"),
+    ):
+        p = probability_handicap(
+            matrix, team=key, line=-1, covers=selection == "cover"
+        )
+        add(f"handicap_{key}", selection, p, -1)
+
+    return rows
+
+
+def _hash_of(inputs_json: str) -> str:
+    import hashlib
+
+    return hashlib.sha256(inputs_json.encode("utf-8")).hexdigest()
 
 
 def build_resolve_prediction_handler(session_factory):

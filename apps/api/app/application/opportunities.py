@@ -82,7 +82,10 @@ class OpportunityService:
             preds = (
                 await session.execute(
                     select(Prediction)
-                    .where(Prediction.match_id.in_(match_ids))
+                    .where(
+                        Prediction.match_id.in_(match_ids),
+                        Prediction.market == "over_under_2_5",
+                    )
                     .order_by(Prediction.prediction_timestamp.desc())
                 )
             ).scalars().all()

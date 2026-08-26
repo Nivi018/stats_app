@@ -126,8 +126,8 @@ async def test_retry_does_not_duplicate_outcomes(runner, broker):
                 )
             )
         ).scalars().all()
-        assert len(predictions) == 2
-        assert len(outcomes) == 2  # 1 outcome por predicción, sin duplicados
+        assert len(predictions) >= 2
+        assert len(outcomes) == len(predictions)  # 1 outcome por predicción, sin duplicados
         assert {o.result for o in outcomes} <= {"win", "loss", "void"}
 
 

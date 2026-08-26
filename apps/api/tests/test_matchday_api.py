@@ -100,8 +100,8 @@ async def test_match_detail_includes_predictions(seeded_session):
 
     assert response.status_code == 200
     data = response.json()
-    assert len(data["predictions"]) == 2
-    assert {p["selection"] for p in data["predictions"]} == {"over", "under"}
+    assert len(data["predictions"]) >= 2
+    assert {p["selection"] for p in data["predictions"] if p["market"] == "over_under_2_5"} == {"over", "under"}
     assert all(p["data_quality"] in {"high", "medium", "low"} for p in data["predictions"])
     assert all(p["inputs_hash"] for p in data["predictions"])
 

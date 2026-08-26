@@ -25,7 +25,7 @@ ALEMBIC_DIR = os.path.join(API_DIR, "alembic")
 ADMIN_DSN = "postgresql://stats:stats@127.0.0.1:5434/postgres"
 MIGRATE_DB = "stats_app_migtest"
 MIGRATE_URL = f"postgresql+asyncpg://stats:stats@127.0.0.1:5434/{MIGRATE_DB}"
-HEAD_REVISION = "06de9ee1fdc3"
+HEAD_REVISION = "a1b2c3d4e5f6"
 
 _TABLES = {
     "competitions", "seasons", "teams", "matches", "team_match_stats",

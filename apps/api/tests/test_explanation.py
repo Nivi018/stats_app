@@ -40,7 +40,12 @@ async def prediction() -> Prediction:
     await broker.close()
 
     async with session_factory() as session:
-        return (await session.execute(select(Prediction).where(Prediction.selection == "over"))).scalar_one()
+        return (await session.execute(
+            select(Prediction).where(
+                Prediction.market == "over_under_2_5",
+                Prediction.selection == "over",
+            )
+        )).scalar_one()
 
 
 def test_explanation_derived_from_persisted_inputs(prediction):

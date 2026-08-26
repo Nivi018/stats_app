@@ -55,21 +55,27 @@ async def test_compute_prediction_job_persists_pair(runner, broker):
     assert outcome == "processed"
     async with session_factory() as session:
         predictions = (await session.execute(select(Prediction))).scalars().all()
-        assert len(predictions) == 2  # over + under
-        assert {p.selection for p in predictions} == {"over", "under"}
+        # Over/Under 2.5 + mercados derivados (1X2, totales por equipo, hándicap).
+        assert len(predictions) >= 2
+        assert {p.selection for p in predictions if p.market == "over_under_2_5"} == {"over", "under"}
+        assert any(p.market == "1x2" for p in predictions)
         assert all(p.inputs_hash for p in predictions)
-        assert all(p.probability > 0 and p.probability < 1 for p in predictions)
+        assert all(0 < p.probability < 1 for p in predictions)
 
 
 @pytest.mark.asyncio
 async def test_double_delivery_is_idempotent(runner, broker):
     await broker.enqueue(_predict_envelope("match-up-01", "pred-dup"))
-    await runner.process_one()
+    assert await runner.process_one() == "processed"
+    async with session_factory() as session:
+        count_after_first = (
+            await session.execute(select(func.count()).select_from(Prediction))
+        ).scalar()
     await runner.process_one()  # entrega duplicada
 
     async with session_factory() as session:
         count = (await session.execute(select(func.count()).select_from(Prediction))).scalar()
-        assert count == 2  # no se duplican
+        assert count == count_after_first  # no se duplican
 
         job_run = (await session.execute(
             select(JobRun).where(JobRun.idempotency_key == "pred-dup")
