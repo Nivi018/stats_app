@@ -614,7 +614,7 @@ components:
             type: string
         snapshot_age_minutes:
           type: integer
-        confidence_level:
+confidence_level:
           type: string
         confidence_score:
           type: number
@@ -622,7 +622,12 @@ components:
           type: array
           items:
             type: string
-
+        stake_pct:
+          type: number
+          nullable: true
+        stake_units:
+          type: number
+          nullable: true
     ErrorResponse:
       type: object
       required: [code, message, correlation_id]
@@ -700,6 +705,12 @@ components:
           type: array
           items:
             type: string
+        stake_pct:
+          type: number
+          nullable: true
+        stake_units:
+          type: number
+          nullable: true
 
     ParlayEstimate:
       type: object
@@ -732,6 +743,12 @@ components:
           type: boolean
         selection_count:
           type: integer
+        stake_pct:
+          type: number
+          nullable: true
+        stake_units:
+          type: number
+          nullable: true
 
     ModelVersion:
       type: object

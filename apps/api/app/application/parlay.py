@@ -20,6 +20,7 @@ from app.domain.parlay import (
     SelectionRef,
     estimate_parlay,
 )
+from app.domain.stake import suggest_stake
 from app.models import Match, OddsSnapshot, Prediction, Team
 
 
@@ -47,6 +48,8 @@ class ResolvedSelection:
     confidence_level: str
     confidence_score: float
     confidence_factors: list[str]
+    stake_pct: float | None
+    stake_units: float | None
 
 
 @dataclass(frozen=True)
@@ -61,6 +64,8 @@ class ParlayEstimateResult:
     correlation_warnings: list[str]
     assumes_independence: bool
     selection_count: int
+    stake_pct: float | None
+    stake_units: float | None
 
 
 class ParlayService:
@@ -96,6 +101,10 @@ class ParlayService:
                 risks.append(selection.risk_level)
 
         estimate, _ = estimate_parlay(estimates, risks)
+        aggregate = suggest_stake(
+            probability=estimate.estimated_probability,
+            decimal_odds=estimate.combined_odds,
+        )
         return ParlayEstimateResult(
             selections=resolved,
             combined_odds=estimate.combined_odds,
@@ -107,6 +116,8 @@ class ParlayService:
             correlation_warnings=estimate.correlation_warnings,
             assumes_independence=estimate.assumes_independence,
             selection_count=estimate.selection_count,
+            stake_pct=aggregate.stake_pct,
+            stake_units=aggregate.stake_units,
         )
 
     async def _resolve(self, session: AsyncSession, ref: dict) -> ResolvedSelection:
@@ -172,6 +183,10 @@ class ParlayService:
             data_quality=prediction.data_quality,
             freshness_seconds=freshness,
         )
+        stake = suggest_stake(
+            probability=prediction.probability,
+            decimal_odds=snapshot.odds,
+        )
         return ResolvedSelection(
             key=f"{match_id}::{market}::{selection}",
             match_id=match_id,
@@ -191,4 +206,6 @@ class ParlayService:
             confidence_level=confidence.level,
             confidence_score=confidence.score,
             confidence_factors=confidence.factors,
+            stake_pct=stake.stake_pct,
+            stake_units=stake.stake_units,
         )

@@ -116,3 +116,5 @@ class OpportunityDto(BaseModel):
     confidence_level: str
     confidence_score: float
     confidence_factors: list[str] = []
+    stake_pct: float | None = None
+    stake_units: float | None = None

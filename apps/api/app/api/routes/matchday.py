@@ -204,6 +204,8 @@ def _to_opportunity_dto(o) -> OpportunityDto:
         confidence_level=o.confidence_level,
         confidence_score=o.confidence_score,
         confidence_factors=o.confidence_factors,
+        stake_pct=o.stake_pct,
+        stake_units=o.stake_units,
     )
 
 

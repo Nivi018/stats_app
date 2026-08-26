@@ -49,6 +49,8 @@ async def estimate_parlay(
                 confidence_level=s.confidence_level,
                 confidence_score=s.confidence_score,
                 confidence_factors=s.confidence_factors,
+                stake_pct=s.stake_pct,
+                stake_units=s.stake_units,
             )
             for s in result.selections
         ],
@@ -61,4 +63,6 @@ async def estimate_parlay(
         correlation_warnings=result.correlation_warnings,
         assumes_independence=result.assumes_independence,
         selection_count=result.selection_count,
+        stake_pct=result.stake_pct,
+        stake_units=result.stake_units,
     )

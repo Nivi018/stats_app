@@ -38,6 +38,8 @@ class ResolvedSelectionDto(BaseModel):
     confidence_level: str
     confidence_score: float
     confidence_factors: list[str] = []
+    stake_pct: float | None = None
+    stake_units: float | None = None
 
 
 class ParlayEstimateDto(BaseModel):
@@ -51,3 +53,5 @@ class ParlayEstimateDto(BaseModel):
     correlation_warnings: list[str]
     assumes_independence: bool
     selection_count: int
+    stake_pct: float | None = None
+    stake_units: float | None = None

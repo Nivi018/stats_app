@@ -14,6 +14,7 @@ from sqlalchemy.orm import aliased
 
 from app.domain.confidence import assess_confidence
 from app.domain.odds import edge_pp, expected_value
+from app.domain.stake import suggest_stake
 from app.model.signal import evaluate_signal
 from app.models import Match, OddsSnapshot, Prediction, Team
 from app.odds.snapshots import Snapshot, de_vig_pair, is_eligible_at
@@ -41,6 +42,8 @@ class Opportunity:
     confidence_level: str
     confidence_score: float
     confidence_factors: list[str]
+    stake_pct: float | None
+    stake_units: float | None
 
 
 class OpportunityService:
@@ -137,6 +140,10 @@ class OpportunityService:
                         data_quality=pred.data_quality,
                         freshness_seconds=age_seconds,
                     )
+                    stake = suggest_stake(
+                        probability=pred.probability,
+                        decimal_odds=snapshot.odds,
+                    )
                     opportunity = Opportunity(
                         match_id=match.external_id,
                         home_team_short=home_team.short_name or home_team.name,
@@ -158,6 +165,8 @@ class OpportunityService:
                         confidence_level=confidence.level,
                         confidence_score=confidence.score,
                         confidence_factors=confidence.factors,
+                        stake_pct=stake.stake_pct,
+                        stake_units=stake.stake_units,
                     )
                     if opportunity.edge_pp < min_edge:
                         continue
