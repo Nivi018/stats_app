@@ -21,6 +21,7 @@ test.describe("recorridos críticos end-to-end (US1)", () => {
     await page.goto("/scanner");
     await expect(page.getByRole("heading", { name: "Oportunidades" })).toBeVisible();
     await expect(page.getByRole("columnheader", { name: "Confianza" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Stake" })).toBeVisible();
     const firstMatch = page.getByRole("link", { name: /–/ }).first();
     await firstMatch.click();
     await expect(page).toHaveURL(/\/matches\//);

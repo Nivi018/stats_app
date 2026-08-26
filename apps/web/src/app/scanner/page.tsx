@@ -179,6 +179,7 @@ export default async function ScannerPage({ searchParams }: { searchParams: Sear
                   <th scope="col" className="py-3 pr-4 font-semibold">Calidad</th>
                   <th scope="col" className="py-3 pr-4 font-semibold">Riesgo</th>
                   <th scope="col" className="py-3 pr-4 font-semibold">Confianza</th>
+                  <th scope="col" className="py-3 pr-4 font-semibold text-right">Stake</th>
                   <th scope="col" className="py-3 font-semibold">Estado</th>
                 </tr>
               </thead>
@@ -224,6 +225,15 @@ export default async function ScannerPage({ searchParams }: { searchParams: Sear
                         <ConfidenceMeter level={op.confidence_level} score={op.confidence_score} compact />
                       </div>
                     </td>
+                    <td className="py-3 pr-4 text-right tabular-nums">
+                      {op.stake_units != null ? (
+                        <span title={`Sugerencia: ${op.stake_pct}% del bankroll`}>
+                          {op.stake_units.toFixed(1)}u
+                        </span>
+                      ) : (
+                        <span className="text-[var(--muted)]">—</span>
+                      )}
+                    </td>
                     <td className="py-3">
                       <span className={op.is_signal ? "font-semibold text-[var(--accent)]" : "text-[var(--muted)]"}>
                         {signalLabel(op)}
@@ -235,7 +245,9 @@ export default async function ScannerPage({ searchParams }: { searchParams: Sear
             </table>
           </div>
           <p className="mt-4 text-xs text-[var(--muted)]">
-            Señal: edge ≥ 5pp, EV &gt; 0, calidad ≥ media y cuota fresca (≤ 30 min).
+            Señal: edge ≥ 5pp, EV &gt; 0, calidad ≥ media y cuota fresca (≤ 30 min). El stake es
+            una sugerencia responsable (Kelly fraccionado 25%, tope 5% del bankroll; 1u = 2%): no
+            es consejo financiero.
           </p>
         </section>
       )}

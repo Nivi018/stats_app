@@ -108,6 +108,8 @@ export type OpportunityDto = {
   confidence_level: string;
   confidence_score: number;
   confidence_factors: string[];
+  stake_pct: number | null;
+  stake_units: number | null;
 };
 
 export type OpportunityFilters = {
@@ -261,6 +263,8 @@ export type ResolvedSelectionDto = {
   confidence_level: string;
   confidence_score: number;
   confidence_factors: string[];
+  stake_pct: number | null;
+  stake_units: number | null;
 };
 
 export type ParlayEstimateDto = {
@@ -274,6 +278,8 @@ export type ParlayEstimateDto = {
   correlation_warnings: string[];
   assumes_independence: boolean;
   selection_count: number;
+  stake_pct: number | null;
+  stake_units: number | null;
 };
 
 export async function estimateParlay(selections: ParlaySelectionRef[]): Promise<ParlayEstimateDto> {

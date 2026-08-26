@@ -249,6 +249,12 @@ export default function ParlayBuilder({
                           />
                         </div>
                       )}
+                      {resolved && resolved.stake_units != null && (
+                        <p className="mt-1 text-xs text-[var(--muted)]">
+                          Stake sugerido: <span className="font-medium">{resolved.stake_units.toFixed(1)}u</span>{" "}
+                          ({resolved.stake_pct}% del bankroll)
+                        </p>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -321,7 +327,22 @@ function EstimatePanel({ estimate }: { estimate: ParlayEstimateDto }) {
           <dt className="text-[var(--muted)]">Riesgo agregado</dt>
           <dd className="font-semibold capitalize">{estimate.risk_level}</dd>
         </div>
+        {estimate.stake_units != null && (
+          <div className="flex justify-between">
+            <dt className="text-[var(--muted)]">Stake sugerido</dt>
+            <dd className="font-medium tabular-nums">
+              {estimate.stake_units.toFixed(1)}u ({estimate.stake_pct}% del bankroll)
+            </dd>
+          </div>
+        )}
       </dl>
+
+      {estimate.stake_units != null && (
+        <p className="mt-3 text-xs text-[var(--muted)]">
+          Stake = Kelly fraccionado ({estimate.assumes_independence ? "con advertencias" : "por selección"});
+          1 unidad = 2% del bankroll, tope 5%. No es consejo financiero.
+        </p>
+      )}
 
       {estimate.correlation_warnings.length > 0 && (
         <div role="alert" className="mt-4 border border-yellow-300 bg-yellow-50 p-3 text-xs text-yellow-900">
