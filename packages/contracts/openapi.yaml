@@ -350,6 +350,27 @@ paths:
               schema:
                 type: string
 
+  /backtest:
+    get:
+      operationId: getBacktest
+      summary: Reporte determinista de backtesting walk-forward (pliegues, overall, out-of-sample y holdout)
+      parameters:
+        - name: folds
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 2
+            maximum: 8
+            default: 4
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BacktestReport"
+
 components:
   schemas:
     ServiceInfo:
@@ -932,3 +953,89 @@ confidence_level:
           type: integer
         total_pages:
           type: integer
+
+    BacktestMetrics:
+      type: object
+      required: [sample_size, wins, losses, voids]
+      properties:
+        sample_size:
+          type: integer
+        wins:
+          type: integer
+        losses:
+          type: integer
+        voids:
+          type: integer
+        hit_rate:
+          type: number
+          nullable: true
+        unit_roi:
+          type: number
+          nullable: true
+        brier:
+          type: number
+          nullable: true
+        sample_sufficient:
+          type: boolean
+        calibration_bins:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalibrationBin"
+
+    BacktestBaseline:
+      type: object
+      required: [name, coverage, coverage_n, candidates_n]
+      properties:
+        name:
+          type: string
+          enum: [market, league, poisson]
+        coverage:
+          type: number
+        coverage_n:
+          type: integer
+        candidates_n:
+          type: integer
+        metrics:
+          $ref: "#/components/schemas/BacktestMetrics"
+
+    BacktestFold:
+      type: object
+      required: [index, train_size, test_size]
+      properties:
+        index:
+          type: integer
+        train_size:
+          type: integer
+        test_size:
+          type: integer
+        baselines:
+          type: array
+          items:
+            $ref: "#/components/schemas/BacktestBaseline"
+
+    BacktestReport:
+      type: object
+      required: [n_folds, dataset_version, random_seed, folds, overall, out_of_sample, final_holdout]
+      properties:
+        n_folds:
+          type: integer
+        dataset_version:
+          type: string
+        random_seed:
+          type: integer
+        folds:
+          type: array
+          items:
+            $ref: "#/components/schemas/BacktestFold"
+        overall:
+          type: array
+          items:
+            $ref: "#/components/schemas/BacktestBaseline"
+        out_of_sample:
+          type: array
+          items:
+            $ref: "#/components/schemas/BacktestBaseline"
+        final_holdout:
+          type: array
+          items:
+            $ref: "#/components/schemas/BacktestBaseline"

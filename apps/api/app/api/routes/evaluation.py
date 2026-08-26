@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, Query, Request
 
+from app.application.backtest import BacktestService
 from app.application.metrics import MetricsService
 from app.db.session import async_session
 from app.schemas.evaluation import (
@@ -18,6 +19,11 @@ router = APIRouter()
 def get_metrics_service(request: Request) -> MetricsService:
     factory = getattr(request.app.state, "session_factory", None)
     return MetricsService(factory or async_session)
+
+
+def get_backtest_service(request: Request) -> BacktestService:
+    factory = getattr(request.app.state, "session_factory", None)
+    return BacktestService(factory or async_session)
 
 
 @router.get("/model-versions", response_model=list[ModelVersionDto])
@@ -117,3 +123,12 @@ async def get_history(
         total=result_page.total,
         total_pages=result_page.total_pages,
     )
+
+
+@router.get("/backtest")
+async def get_backtest(
+    folds: int = Query(4, ge=2, le=8, description="Número de pliegues walk-forward"),
+    service: BacktestService = Depends(get_backtest_service),
+):
+    """Reporte de backtesting walk-forward (determinista): pliegues + evaluación."""
+    return await service.report(n_folds=folds)
