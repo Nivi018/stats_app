@@ -44,7 +44,14 @@ npm run db:seed
 
 # Calcular y resolver predicciones demo (puebla scanner, parlay, historial y métricas)
 apps/api/.venv/Scripts/python -m app.jobs.run_resolution
+
+# Refrescar el mercado demo (timestamp fresco y señales demostrables)
+apps/api/.venv/Scripts/python -m app.jobs.freshen_demo_odds
 ```
+
+> **Nota:** `pytest` limpia el esquema de la base al terminar. Si tras correr las
+> pruebas el API falla con "relation ... does not exist", vuelve a ejecutar los
+> pasos de *migrar y sembrar*.
 
 ## Comandos
 
